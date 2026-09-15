@@ -229,31 +229,50 @@ async function entrar() {
     });
     if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
     const data = await resp.json();
-    TOKEN = data.access_token;
-    PARTIDA_ID = partidaId;
-
-    const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
-    if (!partidaResp.ok) throw new Error('Partida não encontrada.');
-    const partida = await partidaResp.json();
-
-    document.getElementById('placar-nosso').textContent = partida.placar_nosso ?? 0;
-    document.getElementById('placar-adversario').textContent = partida.placar_adversario ?? 0;
-    document.getElementById('periodo-atual').textContent = partida.periodo_atual;
-    document.getElementById('nome-partida').textContent = `Partida #${partida.id}`;
-    substituicoesPermitidas = partida.substituicoes_permitidas;
-    substituicoesRealizadas = partida.substituicoes_realizadas;
-    atualizarTextoSubstituicoes();
-
-    await carregarAtletas(partida.clube_id);
-    alternarCampoAtletaPenalti();
-    await carregarCobrancasPenaltis();
-
-    document.getElementById('tela-login').style.display = 'none';
-    document.getElementById('tela-jogo').style.display = 'block';
-    conectarWebSocket();
+    await entrarComTokenEPartida(data.access_token, partidaId);
   } catch (e) {
     erro.textContent = e.message;
     erro.style.display = 'block';
+  }
+}
+
+async function entrarComTokenEPartida(token, partidaId) {
+  const erro = document.getElementById('login-erro');
+  TOKEN = token;
+  PARTIDA_ID = partidaId;
+
+  const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
+  if (!partidaResp.ok) throw new Error('Partida não encontrada.');
+  const partida = await partidaResp.json();
+
+  document.getElementById('placar-nosso').textContent = partida.placar_nosso ?? 0;
+  document.getElementById('placar-adversario').textContent = partida.placar_adversario ?? 0;
+  document.getElementById('periodo-atual').textContent = partida.periodo_atual;
+  document.getElementById('nome-partida').textContent = `Partida #${partida.id}`;
+  substituicoesPermitidas = partida.substituicoes_permitidas;
+  substituicoesRealizadas = partida.substituicoes_realizadas;
+  atualizarTextoSubstituicoes();
+
+  await carregarAtletas(partida.clube_id);
+  alternarCampoAtletaPenalti();
+  await carregarCobrancasPenaltis();
+
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('tela-jogo').style.display = 'block';
+  conectarWebSocket();
+}
+
+async function tentarEntradaAutomatica() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const partidaId = params.get('partida_id');
+  if (token && partidaId) {
+    try {
+      await entrarComTokenEPartida(token, partidaId);
+    } catch (e) {
+      document.getElementById('login-erro').textContent = 'Link expirado ou inválido — entre novamente.';
+      document.getElementById('login-erro').style.display = 'block';
+    }
   }
 }
 
@@ -658,6 +677,7 @@ function renderCobrancasPenaltis() {
 
 document.addEventListener('DOMContentLoaded', () => {
   alternarCampoAtletaPenalti();
+  tentarEntradaAutomatica();
 });
 
 // --- Voz: Modo 8 (interpretação) + registro por confirmação ---

@@ -146,19 +146,42 @@ async function entrar() {
     });
     if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
     const data = await resp.json();
-    TOKEN = data.access_token;
-
-    const meResp = await fetch(`${API}/auth/me`, { headers: authHeader() });
-    const me = await meResp.json();
-    CLUBE_ID = me.clube_id;
-
-    document.getElementById('tela-login').style.display = 'none';
-    document.getElementById('tela-partidas').style.display = 'block';
-    await carregarListasBase();
-    await carregarPartidas();
+    await entrarComToken(data.access_token);
   } catch (e) {
     erro.textContent = e.message;
     erro.style.display = 'block';
+  }
+}
+
+async function entrarComToken(token, partidaIdDireto) {
+  TOKEN = token;
+  const meResp = await fetch(`${API}/auth/me`, { headers: authHeader() });
+  if (!meResp.ok) throw new Error('Sessão inválida — entre novamente.');
+  const me = await meResp.json();
+  CLUBE_ID = me.clube_id;
+
+  document.getElementById('tela-login').style.display = 'none';
+  await carregarListasBase();
+
+  if (partidaIdDireto) {
+    selecionarPartida(partidaIdDireto);
+  } else {
+    document.getElementById('tela-partidas').style.display = 'block';
+    await carregarPartidas();
+  }
+}
+
+async function tentarEntradaAutomatica() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const partidaId = params.get('partida_id');
+  if (token) {
+    try {
+      await entrarComToken(token, partidaId);
+    } catch (e) {
+      document.getElementById('login-erro').textContent = 'Link expirado ou inválido — entre novamente.';
+      document.getElementById('login-erro').style.display = 'block';
+    }
   }
 }
 
@@ -424,6 +447,8 @@ async function aprovarRetrospecto() {
       '<p style="color:#1D9E75;font-size:13px;">Retrospecto aprovado.</p>');
   }
 }
+
+document.addEventListener('DOMContentLoaded', tentarEntradaAutomatica);
 </script>
 
 </body>

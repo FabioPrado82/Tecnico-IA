@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Técnico com IA — Save FC</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; text-align: center; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
+  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
+  .linha-partida { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  .linha-partida .info { font-size: 13px; color: #666; }
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .menu-grid a { display: block; text-align: center; text-decoration: none; color: #1a1a1a; background: #f7f7f7; border-radius: 8px; padding: 14px 6px; font-size: 13px; font-weight: 500; }
+  .menu-grid a:hover { background: #eafaf3; }
+  #form-nova-partida { display: none; border-top: 1px solid #eee; margin-top: 12px; padding-top: 12px; }
+  #tela-login { }
+  #tela-partidas { display: none; }
+  .sair { text-align: center; margin-top: 8px; }
+  .sair button { background: none; border: none; color: #999; font-size: 12px; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Técnico com IA — Save FC</h1>
+
+<div id="tela-login" class="card">
+  <h2>Entrar</h2>
+  <label>E-mail</label>
+  <input type="email" id="login-email" placeholder="seu@email.com">
+  <label>Senha</label>
+  <input type="password" id="login-senha">
+  <button class="btn-primary" style="margin-top:16px;" onclick="entrar()">Entrar</button>
+  <p class="erro" id="login-erro" style="display:none;"></p>
+</div>
+
+<div id="tela-partidas">
+  <div class="card">
+    <h2>Partidas</h2>
+    <div id="lista-partidas"></div>
+    <button style="width:100%;margin-top:12px;" onclick="alternarFormNovaPartida()">+ Nova partida</button>
+
+    <div id="form-nova-partida">
+      <label>Campeonato</label>
+      <select id="nova-campeonato"></select>
+      <button style="margin-top:4px;font-size:12px;" onclick="alternarNovoCampeonato()">+ Novo campeonato</button>
+      <div id="bloco-novo-campeonato" style="display:none;margin-top:8px;">
+        <input type="text" id="input-novo-campeonato" placeholder="Nome do campeonato">
+        <button style="margin-top:6px;" onclick="criarCampeonato()">Criar campeonato</button>
+      </div>
+
+      <label>Adversário</label>
+      <select id="nova-adversario"></select>
+      <button style="margin-top:4px;font-size:12px;" onclick="alternarNovoAdversario()">+ Novo adversário</button>
+      <div id="bloco-novo-adversario" style="display:none;margin-top:8px;">
+        <input type="text" id="input-novo-adversario" placeholder="Nome do adversário">
+        <button style="margin-top:6px;" onclick="criarAdversario()">Criar adversário</button>
+      </div>
+
+      <label>Fase</label>
+      <input type="text" id="nova-fase" placeholder="ex: Quartas de final">
+
+      <label>Data e horário</label>
+      <input type="datetime-local" id="nova-data-hora">
+
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;">
+          <label>Local</label>
+          <select id="nova-local">
+            <option value="casa">Casa</option>
+            <option value="fora">Fora</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label>Duração do tempo (min)</label>
+          <input type="number" id="nova-duracao" value="45">
+        </div>
+      </div>
+
+      <label>Nome do local</label>
+      <input type="text" id="nova-local-nome" placeholder="ex: Campo do Bairro">
+
+      <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarPartida()">Criar partida</button>
+      <p class="erro" id="erro-nova-partida" style="display:none;"></p>
+    </div>
+  </div>
+
+  <div class="sair">
+    <button onclick="sair()">Sair</button>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let TOKEN = null;
+let CLUBE_ID = null;
+
+async function entrar() {
+  const email = document.getElementById('login-email').value;
+  const senha = document.getElementById('login-senha').value;
+  const erro = document.getElementById('login-erro');
+  erro.style.display = 'none';
+
+  if (!email || !senha) {
+    erro.textContent = 'Preencha e-mail e senha.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(senha)}`,
+    });
+    if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
+    const data = await resp.json();
+    TOKEN = data.access_token;
+
+    const meResp = await fetch(`${API}/auth/me`, { headers: authHeader() });
+    const me = await meResp.json();
+    CLUBE_ID = me.clube_id;
+
+    document.getElementById('tela-login').style.display = 'none';
+    document.getElementById('tela-partidas').style.display = 'block';
+    await carregarListasBase();
+    await carregarPartidas();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.style.display = 'block';
+  }
+}
+
+function sair() {
+  TOKEN = null;
+  CLUBE_ID = null;
+  document.getElementById('tela-partidas').style.display = 'none';
+  document.getElementById('tela-login').style.display = 'block';
+  document.getElementById('login-senha').value = '';
+}
+
+function authHeader() {
+  return { 'Authorization': `Bearer ${TOKEN}` };
+}
+
+let campeonatosCache = [];
+let adversariosCache = [];
+
+async function carregarListasBase() {
+  const campResp = await fetch(`${API}/campeonatos?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+  campeonatosCache = await campResp.json();
+  document.getElementById('nova-campeonato').innerHTML =
+    campeonatosCache.map(c => `<option value="${c.id}">${c.nome}${c.temporada ? ' (' + c.temporada + ')' : ''}</option>`).join('')
+    || '<option value="">Nenhum campeonato — crie um</option>';
+
+  const advResp = await fetch(`${API}/adversarios`, { headers: authHeader() });
+  adversariosCache = await advResp.json();
+  document.getElementById('nova-adversario').innerHTML =
+    adversariosCache.map(a => `<option value="${a.id}">${a.nome}</option>`).join('')
+    || '<option value="">Nenhum adversário — crie um</option>';
+}
+
+async function carregarPartidas() {
+  const resp = await fetch(`${API}/partidas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+  const partidas = await resp.json();
+  const mapaAdversarios = Object.fromEntries(adversariosCache.map(a => [a.id, a.nome]));
+
+  const div = document.getElementById('lista-partidas');
+  div.innerHTML = partidas.map(p => `
+    <div class="linha-partida">
+      <div style="flex:1;">
+        <div>Save FC x ${mapaAdversarios[p.adversario_id] || '?'}</div>
+        <div class="info">${p.fase || ''} · ${new Date(p.data_hora).toLocaleDateString('pt-BR')} · ${p.status}</div>
+        <div class="menu-grid">
+          <a href="comissao.html?token=${TOKEN}&partida_id=${p.id}">Comissão</a>
+          <a href="auxiliar.html?token=${TOKEN}&partida_id=${p.id}">Tempo Real</a>
+          <a href="arte.html?token=${TOKEN}&partida_id=${p.id}">Arte</a>
+        </div>
+      </div>
+    </div>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhuma partida criada ainda.</p>';
+}
+
+function alternarFormNovaPartida() {
+  const form = document.getElementById('form-nova-partida');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+function alternarNovoCampeonato() {
+  const bloco = document.getElementById('bloco-novo-campeonato');
+  bloco.style.display = bloco.style.display === 'none' ? 'block' : 'none';
+}
+function alternarNovoAdversario() {
+  const bloco = document.getElementById('bloco-novo-adversario');
+  bloco.style.display = bloco.style.display === 'none' ? 'block' : 'none';
+}
+
+async function criarCampeonato() {
+  const nome = document.getElementById('input-novo-campeonato').value;
+  if (!nome) return;
+  await fetch(`${API}/campeonatos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ clube_id: CLUBE_ID, nome }),
+  });
+  document.getElementById('input-novo-campeonato').value = '';
+  document.getElementById('bloco-novo-campeonato').style.display = 'none';
+  await carregarListasBase();
+}
+
+async function criarAdversario() {
+  const nome = document.getElementById('input-novo-adversario').value;
+  if (!nome) return;
+  await fetch(`${API}/adversarios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ nome }),
+  });
+  document.getElementById('input-novo-adversario').value = '';
+  document.getElementById('bloco-novo-adversario').style.display = 'none';
+  await carregarListasBase();
+}
+
+async function criarPartida() {
+  const erro = document.getElementById('erro-nova-partida');
+  erro.style.display = 'none';
+
+  const campeonatoId = document.getElementById('nova-campeonato').value;
+  const adversarioId = document.getElementById('nova-adversario').value;
+  const dataHora = document.getElementById('nova-data-hora').value;
+
+  if (!campeonatoId || !adversarioId || !dataHora) {
+    erro.textContent = 'Preencha campeonato, adversário e data/horário.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const corpo = {
+    clube_id: CLUBE_ID,
+    campeonato_id: Number(campeonatoId),
+    adversario_id: Number(adversarioId),
+    fase: document.getElementById('nova-fase').value || null,
+    data_hora: new Date(dataHora).toISOString(),
+    local: document.getElementById('nova-local').value,
+    duracao_tempo_min: Number(document.getElementById('nova-duracao').value) || 45,
+    local_nome: document.getElementById('nova-local-nome').value || null,
+  };
+
+  const resp = await fetch(`${API}/partidas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    erro.textContent = data.detail || 'Erro ao criar a partida.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('form-nova-partida').style.display = 'none';
+  await carregarListasBase();
+  await carregarPartidas();
+}
+</script>
+
+</body>
+</html>
