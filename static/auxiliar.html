@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tempo Real — Técnico com IA</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
+  button:active { transform: scale(0.98); }
+  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .placar { display: flex; align-items: center; justify-content: space-between; }
+  .placar .numero { font-size: 26px; font-weight: 700; }
+  .cronometro { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .status { font-size: 12px; color: #888; }
+  #overlay { display: none; min-height: 300px; background: rgba(0,0,0,0.5); border-radius: 12px; align-items: center; justify-content: center; padding: 1rem; }
+  #overlay .modal { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 340px; }
+  .opcao-btn { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
+  .tag { font-size: 11px; font-weight: 600; color: #1D9E75; margin-bottom: 6px; }
+  .sugestao { background: #eafaf3; border-radius: 8px; padding: 10px; margin-top: 12px; font-size: 13px; display: none; }
+  .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
+  #tela-login { }
+  #tela-jogo { display: none; }
+</style>
+</head>
+<body>
+
+<div id="tela-login" class="card">
+  <h2>Entrar</h2>
+  <label>E-mail</label>
+  <input type="email" id="login-email" placeholder="seu@email.com">
+  <label>Senha</label>
+  <input type="password" id="login-senha">
+  <label>ID da partida</label>
+  <input type="number" id="login-partida" placeholder="ex: 1">
+  <button class="btn-primary" style="margin-top:16px;" onclick="entrar()">Entrar</button>
+  <p class="erro" id="login-erro" style="display:none;"></p>
+</div>
+
+<div id="tela-jogo">
+  <div class="card">
+    <div class="placar">
+      <div>
+        <div class="status" id="nome-partida">Carregando...</div>
+        <div class="numero"><span id="placar-nosso">0</span> - <span id="placar-adversario">0</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="status" id="periodo-atual">1º tempo</div>
+        <div class="cronometro" id="cronometro">00:00</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button id="btn-play" onclick="alternarCronometro()" style="flex:1;">Iniciar</button>
+      <button onclick="alternarPainelAjuste()" style="flex:1;">Ajustar tempo</button>
+    </div>
+    <div id="painel-ajuste" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="number" id="ajuste-min" placeholder="Min" min="0" style="width:70px;">
+        <input type="number" id="ajuste-seg" placeholder="Seg" min="0" max="59" style="width:70px;">
+        <select id="ajuste-periodo" style="flex:1;">
+          <option value="1_tempo">1º tempo</option>
+          <option value="intervalo">Intervalo</option>
+          <option value="2_tempo">2º tempo</option>
+          <option value="prorrogacao">Prorrogação</option>
+          <option value="penaltis">Pênaltis</option>
+        </select>
+      </div>
+      <button style="width:100%;" onclick="aplicarAjusteCronometro()">Aplicar ajuste</button>
+    </div>
+    <div class="status" id="status-ws" style="margin-top:10px;">Conectando ao tempo real...</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="status">Substituições</div>
+        <div style="font-size:18px;font-weight:600;" id="texto-substituicoes">0 de 5</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="ajustarSubstituicoes(-1)" aria-label="Diminuir">-</button>
+        <button onclick="ajustarSubstituicoes(1)" aria-label="Aumentar">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Registrar por voz</h2>
+    <button id="btn-mic" class="btn-primary" style="width:100%;" onclick="iniciarReconhecimentoVoz()">🎤 Falar um evento</button>
+    <p class="status" id="status-mic" style="margin-top:8px;">Toque e diga algo como "gol do Rafael"</p>
+
+    <div id="painel-confirmacao-voz" style="display:none;margin-top:12px;background:#f7f7f7;border-radius:8px;padding:12px;">
+      <p class="status">Você disse</p>
+      <p id="transcricao-bruta" style="font-style:italic;font-size:13px;"></p>
+      <p class="status" style="margin-top:8px;">Interpretado como</p>
+      <p id="interpretacao-texto" style="font-size:16px;font-weight:600;"></p>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button style="flex:1;" onclick="cancelarConfirmacaoVoz()">Cancelar</button>
+        <button class="btn-primary" style="flex:1;" onclick="confirmarEventoPorVoz()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Registrar evento</h2>
+    <div class="grid3">
+      <button onclick="abrirEvento('gol')">Gol</button>
+      <button onclick="abrirEvento('cartao_amarelo')">Cartão amarelo</button>
+      <button onclick="abrirEvento('cartao_vermelho')">Cartão vermelho</button>
+      <button onclick="abrirEvento('falta')">Falta</button>
+      <button onclick="abrirEvento('escanteio')">Escanteio</button>
+      <button onclick="abrirEvento('substituicao')">Substituição</button>
+    </div>
+    <div id="ultimo-evento" class="status" style="margin-top:10px;">Nenhum evento registrado ainda.</div>
+  </div>
+
+  <div id="painel-evento" class="card" style="display:none;">
+    <h2 id="titulo-evento"></h2>
+    <div id="passo-time" style="margin-bottom:10px;">
+      <label id="pergunta-time">De qual time?</label>
+      <div style="display:flex;gap:8px;">
+        <button onclick="escolherTime('nosso')" id="btn-time-nosso" style="flex:1;">Nosso</button>
+        <button onclick="escolherTime('adversario')" id="btn-time-adversario" style="flex:1;">Adversário</button>
+      </div>
+    </div>
+    <div id="passo-atleta" style="display:none;">
+      <label id="label-atleta"></label>
+      <select id="select-atleta"></select>
+    </div>
+    <div id="passo-atleta-entrou" style="display:none;">
+      <label>Quem entrou?</label>
+      <select id="select-atleta-entrou"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="cancelarEvento()" style="flex:1;">Cancelar</button>
+      <button onclick="confirmarEvento()" style="flex:1;" class="btn-primary">Confirmar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <button style="width:100%;" onclick="gerarCicloRegular()">Gerar pergunta do ciclo (2-3min)</button>
+  </div>
+
+  <div class="card">
+    <h2>Chat livre com o assistente</h2>
+    <textarea id="chat-mensagem" rows="2" placeholder="Pergunte algo ao técnico IA" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;"></textarea>
+    <button class="btn-primary" style="margin-top:8px;" onclick="enviarChat()">Enviar</button>
+    <div id="chat-historico" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Pênaltis</h2>
+    <button style="width:100%;" onclick="gerarSugestaoPenaltis()">Gerar sugestão de ordem</button>
+    <div id="lista-penaltis" style="margin-top:12px;"></div>
+    <button id="btn-confirmar-ordem" class="btn-primary" style="margin-top:8px;display:none;" onclick="confirmarOrdemPenaltis()">Confirmar ordem</button>
+
+    <div style="border-top:1px solid #eee;margin-top:16px;padding-top:12px;">
+      <label>Registrar cobrança</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="penalti-lado" style="flex:1;" onchange="alternarCampoAtletaPenalti()">
+          <option value="nosso">Nosso</option>
+          <option value="adversario">Adversário</option>
+        </select>
+        <select id="penalti-resultado" style="flex:1;">
+          <option value="gol">Gol</option>
+          <option value="perdido">Perdido</option>
+          <option value="defendido">Defendido</option>
+        </select>
+      </div>
+      <select id="penalti-atleta" style="margin-bottom:8px;"></select>
+      <input type="text" id="penalti-jogador-adversario" placeholder="Nome/número do jogador adversário" style="display:none;margin-bottom:8px;">
+      <button style="width:100%;" onclick="registrarCobrancaPenalti()">Registrar cobrança</button>
+    </div>
+    <div id="lista-cobrancas-penalti" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="modal">
+    <div class="tag" id="modal-tag"></div>
+    <p id="modal-pergunta" style="font-size:15px;margin:0 0 14px;"></p>
+    <div id="modal-opcoes"></div>
+    <div class="sugestao" id="modal-sugestao">
+      <div class="tag">Sugestão do técnico IA</div>
+      <div id="modal-sugestao-texto"></div>
+    </div>
+    <button style="width:100%;margin-top:12px;" onclick="fecharModal()">Fechar</button>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let TOKEN = null;
+let PARTIDA_ID = null;
+let ws = null;
+let segundosTotais = 0;
+let rodando = false;
+let intervalId = null;
+let eventoAtual = null;
+let timeEscolhido = null;
+let atletas = [];
+let cicloAtualId = null;
+let substituicoesPermitidas = 5;
+let substituicoesRealizadas = 0;
+
+async function entrar() {
+  const email = document.getElementById('login-email').value;
+  const senha = document.getElementById('login-senha').value;
+  const partidaId = document.getElementById('login-partida').value;
+  const erro = document.getElementById('login-erro');
+  erro.style.display = 'none';
+
+  if (!email || !senha || !partidaId) {
+    erro.textContent = 'Preencha e-mail, senha e o ID da partida.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(senha)}`,
+    });
+    if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
+    const data = await resp.json();
+    TOKEN = data.access_token;
+    PARTIDA_ID = partidaId;
+
+    const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
+    if (!partidaResp.ok) throw new Error('Partida não encontrada.');
+    const partida = await partidaResp.json();
+
+    document.getElementById('placar-nosso').textContent = partida.placar_nosso ?? 0;
+    document.getElementById('placar-adversario').textContent = partida.placar_adversario ?? 0;
+    document.getElementById('periodo-atual').textContent = partida.periodo_atual;
+    document.getElementById('nome-partida').textContent = `Partida #${partida.id}`;
+    substituicoesPermitidas = partida.substituicoes_permitidas;
+    substituicoesRealizadas = partida.substituicoes_realizadas;
+    atualizarTextoSubstituicoes();
+
+    await carregarAtletas(partida.clube_id);
+    alternarCampoAtletaPenalti();
+    await carregarCobrancasPenaltis();
+
+    document.getElementById('tela-login').style.display = 'none';
+    document.getElementById('tela-jogo').style.display = 'block';
+    conectarWebSocket();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.style.display = 'block';
+  }
+}
+
+function authHeader() {
+  return { 'Authorization': `Bearer ${TOKEN}` };
+}
+
+async function carregarAtletas(clubeId) {
+  const resp = await fetch(`${API}/atletas?clube_id=${clubeId}&ativo=true`, { headers: authHeader() });
+  atletas = await resp.json();
+}
+
+function conectarWebSocket() {
+  const protocolo = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = window.location.host || 'localhost:8000';
+  ws = new WebSocket(`${protocolo}://${host}/ws/partidas/${PARTIDA_ID}?token=${TOKEN}`);
+  const status = document.getElementById('status-ws');
+
+  ws.onopen = () => { status.textContent = 'Tempo real conectado.'; };
+  ws.onclose = () => { status.textContent = 'Tempo real desconectado.'; };
+  ws.onerror = () => { status.textContent = 'Erro na conexão de tempo real.'; };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.tipo === 'novo_ciclo') {
+      abrirModalCiclo(msg.ciclo);
+    } else if (msg.tipo === 'sugestao_pronta') {
+      mostrarSugestaoNoModal(msg.sugestao_ia);
+      falarTexto(msg.sugestao_ia);
+    }
+  };
+}
+
+function formatar(seg) {
+  const m = Math.floor(seg / 60);
+  const s = seg % 60;
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function alternarCronometro() {
+  rodando ? pausarCronometro() : iniciarCronometro();
+}
+function iniciarCronometro() {
+  rodando = true;
+  document.getElementById('btn-play').textContent = 'Pausar';
+  intervalId = setInterval(() => {
+    segundosTotais++;
+    document.getElementById('cronometro').textContent = formatar(segundosTotais);
+  }, 1000);
+}
+function pausarCronometro() {
+  rodando = false;
+  document.getElementById('btn-play').textContent = 'Iniciar';
+  clearInterval(intervalId);
+}
+
+const NOMES_EVENTO = {
+  gol: 'Gol', cartao_amarelo: 'Cartão amarelo', cartao_vermelho: 'Cartão vermelho',
+  falta: 'Falta', escanteio: 'Escanteio', substituicao: 'Substituição',
+};
+
+function abrirEvento(tipo) {
+  eventoAtual = tipo;
+  timeEscolhido = null;
+  document.getElementById('titulo-evento').textContent = NOMES_EVENTO[tipo];
+  document.getElementById('painel-evento').style.display = 'block';
+  document.getElementById('passo-atleta').style.display = 'none';
+  document.getElementById('passo-atleta-entrou').style.display = 'none';
+  document.getElementById('btn-time-nosso').style.borderColor = '#ccc';
+  document.getElementById('btn-time-adversario').style.borderColor = '#ccc';
+
+  if (tipo === 'substituicao') {
+    document.getElementById('passo-time').style.display = 'none';
+    montarSelectAtletas('Quem saiu?');
+    montarSelectAtletasEntrou();
+  } else {
+    document.getElementById('passo-time').style.display = 'block';
+  }
+}
+
+function montarSelectAtletasEntrou() {
+  const select = document.getElementById('select-atleta-entrou');
+  select.innerHTML = atletas.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+  document.getElementById('passo-atleta-entrou').style.display = 'block';
+}
+
+function montarSelectAtletas(label) {
+  document.getElementById('label-atleta').textContent = label;
+  const select = document.getElementById('select-atleta');
+  select.innerHTML = atletas.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+  document.getElementById('passo-atleta').style.display = 'block';
+}
+
+function escolherTime(time) {
+  timeEscolhido = time;
+  document.getElementById('btn-time-nosso').style.borderColor = time === 'nosso' ? '#1D9E75' : '#ccc';
+  document.getElementById('btn-time-adversario').style.borderColor = time === 'adversario' ? '#1D9E75' : '#ccc';
+  if (time === 'nosso' && eventoAtual !== 'escanteio') {
+    montarSelectAtletas('Qual atleta?');
+  } else {
+    document.getElementById('passo-atleta').style.display = 'none';
+  }
+}
+
+function cancelarEvento() {
+  document.getElementById('painel-evento').style.display = 'none';
+}
+
+async function confirmarEvento() {
+  const minuto = Math.floor(segundosTotais / 60);
+  const corpo = { minuto, tipo_evento: eventoAtual, registrado_por: 'Auxiliar', time: timeEscolhido || 'nosso' };
+  const atletaSelecionado = document.getElementById('select-atleta').value;
+  if (document.getElementById('passo-atleta').style.display === 'block' && atletaSelecionado) {
+    corpo.atleta_id = Number(atletaSelecionado);
+  }
+  if (eventoAtual === 'substituicao') {
+    const atletaEntrou = document.getElementById('select-atleta-entrou').value;
+    if (atletaEntrou) corpo.atleta_entrou_id = Number(atletaEntrou);
+  }
+
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/eventos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  if (resp.ok) {
+    document.getElementById('ultimo-evento').textContent = `${NOMES_EVENTO[eventoAtual]} registrado aos ${formatar(segundosTotais)}`;
+    if (eventoAtual === 'substituicao' && substituicoesRealizadas < substituicoesPermitidas) {
+      substituicoesRealizadas++;
+      atualizarTextoSubstituicoes();
+    }
+  } else {
+    document.getElementById('ultimo-evento').textContent = 'Erro ao registrar evento — tente novamente.';
+  }
+  document.getElementById('painel-evento').style.display = 'none';
+}
+
+async function gerarCicloRegular() {
+  const minuto = Math.floor(segundosTotais / 60);
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/ciclos/gerar-pergunta?minuto_jogo=${minuto}`, {
+    method: 'POST',
+    headers: authHeader(),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    alert(data.detail || 'Erro ao gerar pergunta do ciclo.');
+    return;
+  }
+  abrirModalCiclo(data);
+}
+
+function abrirModalCiclo(ciclo) {
+  cicloAtualId = ciclo.id;
+  const p = ciclo.pergunta_ia || {};
+  document.getElementById('modal-tag').textContent = p.tag || (ciclo.origem === 'gatilho' ? 'Gatilho' : 'Ciclo regular');
+  document.getElementById('modal-pergunta').textContent = p.pergunta || '';
+  document.getElementById('modal-sugestao').style.display = 'none';
+
+  const opcoesDiv = document.getElementById('modal-opcoes');
+  opcoesDiv.innerHTML = '';
+  (p.opcoes || []).forEach(op => {
+    const btn = document.createElement('button');
+    btn.className = 'opcao-btn';
+    btn.textContent = op;
+    btn.onclick = () => responderCiclo(op);
+    opcoesDiv.appendChild(btn);
+  });
+
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+async function responderCiclo(opcaoEscolhida) {
+  const resp = await fetch(`${API}/ciclos/${cicloAtualId}/responder`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ resposta_staff: { opcao_escolhida: opcaoEscolhida }, respondido_por: 'Auxiliar' }),
+  });
+  const data = await resp.json();
+  if (resp.ok && data.sugestao_ia) {
+    mostrarSugestaoNoModal(data.sugestao_ia);
+    falarTexto(data.sugestao_ia);
+  } else if (!resp.ok) {
+    document.getElementById('modal-sugestao').style.display = 'block';
+    document.getElementById('modal-sugestao-texto').textContent = data.detail || 'Erro ao gerar sugestão.';
+  }
+}
+
+function mostrarSugestaoNoModal(texto) {
+  document.getElementById('modal-sugestao').style.display = 'block';
+  document.getElementById('modal-sugestao-texto').textContent = texto;
+}
+
+function fecharModal() {
+  document.getElementById('overlay').style.display = 'none';
+}
+
+function alternarPainelAjuste() {
+  const painel = document.getElementById('painel-ajuste');
+  const abrindo = painel.style.display === 'none';
+  painel.style.display = abrindo ? 'block' : 'none';
+  if (abrindo) {
+    document.getElementById('ajuste-min').value = Math.floor(segundosTotais / 60);
+    document.getElementById('ajuste-seg').value = segundosTotais % 60;
+    document.getElementById('ajuste-periodo').value = document.getElementById('periodo-atual').textContent
+      .toLowerCase().includes('2') ? '2_tempo' : '1_tempo';
+  }
+}
+
+async function aplicarAjusteCronometro() {
+  const min = document.getElementById('ajuste-min').value;
+  const seg = document.getElementById('ajuste-seg').value;
+  if (min === '' || seg === '') {
+    alert('Preencha minutos e segundos.');
+    return;
+  }
+  const periodoAnterior = document.getElementById('periodo-atual').textContent;
+  const periodoNovo = document.getElementById('ajuste-periodo').value;
+  const segundosNovo = (parseInt(min) * 60) + parseInt(seg);
+
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/cronometro/ajustar`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({
+      segundos_anterior: segundosTotais, segundos_novo: segundosNovo,
+      periodo_anterior: periodoAnterior, periodo_novo: periodoNovo,
+      motivo: 'Ajuste manual pelo auxiliar', ajustado_por: 'Auxiliar',
+    }),
+  });
+  if (resp.ok) {
+    const data = await resp.json();
+    segundosTotais = segundosNovo;
+    document.getElementById('cronometro').textContent = formatar(segundosTotais);
+    document.getElementById('periodo-atual').textContent = data.periodo_atual;
+    document.getElementById('painel-ajuste').style.display = 'none';
+  } else {
+    alert('Erro ao aplicar o ajuste.');
+  }
+}
+
+function atualizarTextoSubstituicoes() {
+  document.getElementById('texto-substituicoes').textContent =
+    `${substituicoesRealizadas} de ${substituicoesPermitidas}`;
+}
+
+async function ajustarSubstituicoes(delta) {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/substituicoes`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ delta }),
+  });
+  if (resp.ok) {
+    const data = await resp.json();
+    substituicoesRealizadas = data.substituicoes_realizadas;
+    substituicoesPermitidas = data.substituicoes_permitidas;
+    atualizarTextoSubstituicoes();
+  }
+}
+
+async function enviarChat() {
+  const mensagem = document.getElementById('chat-mensagem').value.trim();
+  if (!mensagem) return;
+  const historico = document.getElementById('chat-historico');
+
+  const bolhaUsuario = document.createElement('div');
+  bolhaUsuario.style.cssText = 'font-size:13px;margin-bottom:6px;';
+  bolhaUsuario.innerHTML = `<strong>Você:</strong> ${mensagem}`;
+  historico.appendChild(bolhaUsuario);
+  document.getElementById('chat-mensagem').value = '';
+
+  const resp = await fetch(`${API}/chat/mensagens`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ mensagem, autor: 'Auxiliar', partida_id: Number(PARTIDA_ID) }),
+  });
+  const data = await resp.json();
+  const bolhaResposta = document.createElement('div');
+  bolhaResposta.style.cssText = 'font-size:13px;margin-bottom:10px;color:' + (resp.ok ? '#333' : '#c0392b') + ';';
+  bolhaResposta.innerHTML = `<strong>Técnico IA:</strong> ${resp.ok ? data.resposta : (data.detail || 'Erro ao consultar a IA.')}`;
+  historico.appendChild(bolhaResposta);
+}
+
+let ordemPenaltis = [];
+
+async function gerarSugestaoPenaltis() {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/penaltis/sugestao-ordem`, {
+    method: 'POST',
+    headers: authHeader(),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    document.getElementById('lista-penaltis').innerHTML =
+      `<p style="color:#c0392b;font-size:13px;">${data.detail || 'Erro ao gerar sugestão.'}</p>`;
+    return;
+  }
+  const mapaAtletas = Object.fromEntries(atletas.map(a => [a.id, a.nome]));
+  ordemPenaltis = data.map(item => ({ ...item, nome: mapaAtletas[item.atleta_id] || `Atleta #${item.atleta_id}` }));
+  renderPenaltis();
+  document.getElementById('btn-confirmar-ordem').style.display = 'block';
+}
+
+function renderPenaltis() {
+  const div = document.getElementById('lista-penaltis');
+  div.innerHTML = '';
+  ordemPenaltis.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:center;gap:10px;background:#f7f7f7;border-radius:8px;padding:8px 10px;margin-bottom:6px;';
+    const aproveitamento = item.aproveitamento_historico != null ? `${item.aproveitamento_historico}%` : 'sem histórico';
+    el.innerHTML = `
+      <span style="font-weight:600;min-width:20px;">${i + 1}º</span>
+      <div style="flex:1;">
+        <div style="font-size:14px;">${item.nome}</div>
+        <div style="font-size:12px;color:#888;">${aproveitamento}${item.motivo ? ' — ' + item.motivo : ''}</div>
+      </div>`;
+    const btnUp = document.createElement('button');
+    btnUp.textContent = '▲';
+    btnUp.style.cssText = 'padding:4px 8px;';
+    btnUp.onclick = () => moverPenalti(i, -1);
+    const btnDown = document.createElement('button');
+    btnDown.textContent = '▼';
+    btnDown.style.cssText = 'padding:4px 8px;';
+    btnDown.onclick = () => moverPenalti(i, 1);
+    el.appendChild(btnUp);
+    el.appendChild(btnDown);
+    div.appendChild(el);
+  });
+}
+
+function moverPenalti(i, delta) {
+  const novo = i + delta;
+  if (novo < 0 || novo >= ordemPenaltis.length) return;
+  [ordemPenaltis[i], ordemPenaltis[novo]] = [ordemPenaltis[novo], ordemPenaltis[i]];
+  renderPenaltis();
+}
+
+async function confirmarOrdemPenaltis() {
+  const corpo = ordemPenaltis.map((item, i) => ({ atleta_id: item.atleta_id, ordem_final: i + 1 }));
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/penaltis/ordem-final`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  if (resp.ok) {
+    document.getElementById('btn-confirmar-ordem').textContent = 'Ordem confirmada';
+  }
+}
+
+function alternarCampoAtletaPenalti() {
+  const lado = document.getElementById('penalti-lado').value;
+  const selectAtleta = document.getElementById('penalti-atleta');
+  const inputAdversario = document.getElementById('penalti-jogador-adversario');
+  if (lado === 'nosso') {
+    selectAtleta.style.display = 'block';
+    selectAtleta.innerHTML = atletas.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+    inputAdversario.style.display = 'none';
+  } else {
+    selectAtleta.style.display = 'none';
+    inputAdversario.style.display = 'block';
+  }
+}
+
+let cobrancasPenaltis = [];
+
+async function carregarCobrancasPenaltis() {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/penaltis/cobrancas`, { headers: authHeader() });
+  if (resp.ok) {
+    cobrancasPenaltis = await resp.json();
+    renderCobrancasPenaltis();
+  }
+}
+
+async function registrarCobrancaPenalti() {
+  const lado = document.getElementById('penalti-lado').value;
+  const resultado = document.getElementById('penalti-resultado').value;
+  const corpo = { lado, resultado, ordem: cobrancasPenaltis.length + 1 };
+  if (lado === 'nosso') {
+    corpo.atleta_id = Number(document.getElementById('penalti-atleta').value);
+  } else {
+    corpo.nome_jogador_adversario = document.getElementById('penalti-jogador-adversario').value;
+  }
+
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/penaltis/cobrancas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  if (resp.ok) {
+    const data = await resp.json();
+    cobrancasPenaltis.push(data);
+    renderCobrancasPenaltis();
+  }
+}
+
+function renderCobrancasPenaltis() {
+  const div = document.getElementById('lista-cobrancas-penalti');
+  div.innerHTML = cobrancasPenaltis.map((c) => {
+    const quem = c.lado === 'nosso'
+      ? (atletas.find(a => a.id === c.atleta_id)?.nome || `Atleta #${c.atleta_id}`)
+      : (c.nome_jogador_adversario || 'Adversário');
+    return `<div style="font-size:13px;padding:4px 0;">${c.ordem}ª — ${quem}: <strong>${c.resultado}</strong></div>`;
+  }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  alternarCampoAtletaPenalti();
+});
+
+// --- Voz: Modo 8 (interpretação) + registro por confirmação ---
+let interpretacaoAtual = null;
+let transcricaoIdAtual = null;
+
+function iniciarReconhecimentoVoz() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const status = document.getElementById('status-mic');
+  if (!SpeechRecognition) {
+    status.textContent = 'Reconhecimento de voz não é suportado neste navegador.';
+    return;
+  }
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'pt-BR';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  status.textContent = 'Ouvindo...';
+  recognition.start();
+
+  recognition.onresult = (event) => {
+    const texto = event.results[0][0].transcript;
+    status.textContent = 'Toque e diga algo como "gol do Rafael"';
+    processarTranscricao(texto);
+  };
+  recognition.onerror = () => {
+    status.textContent = 'Não entendi — tente de novo.';
+  };
+}
+
+async function processarTranscricao(texto) {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/voz/interpretar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ contexto: 'evento', transcricao_bruta: texto }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    document.getElementById('status-mic').textContent = data.detail || 'Erro ao interpretar a fala.';
+    return;
+  }
+
+  transcricaoIdAtual = data.id;
+  interpretacaoAtual = data.interpretacao;
+  document.getElementById('transcricao-bruta').textContent = `"${texto}"`;
+
+  if (interpretacaoAtual.ambiguo || !interpretacaoAtual.tipo_evento) {
+    document.getElementById('interpretacao-texto').textContent =
+      interpretacaoAtual.observacao || 'Não consegui identificar com clareza — corrija manualmente.';
+  } else {
+    const nomeAtleta = interpretacaoAtual.atleta_id
+      ? (atletas.find(a => a.id === interpretacaoAtual.atleta_id)?.nome || `Atleta #${interpretacaoAtual.atleta_id}`)
+      : (interpretacaoAtual.time === 'adversario' ? 'Adversário' : '');
+    document.getElementById('interpretacao-texto').textContent =
+      `${NOMES_EVENTO[interpretacaoAtual.tipo_evento] || interpretacaoAtual.tipo_evento}${nomeAtleta ? ' — ' + nomeAtleta : ''}`;
+  }
+
+  document.getElementById('painel-confirmacao-voz').style.display = 'block';
+}
+
+function cancelarConfirmacaoVoz() {
+  document.getElementById('painel-confirmacao-voz').style.display = 'none';
+  interpretacaoAtual = null;
+}
+
+async function confirmarEventoPorVoz() {
+  if (!interpretacaoAtual || !interpretacaoAtual.tipo_evento) {
+    cancelarConfirmacaoVoz();
+    return;
+  }
+  const minuto = Math.floor(segundosTotais / 60);
+  const corpo = {
+    minuto,
+    tipo_evento: interpretacaoAtual.tipo_evento,
+    time: interpretacaoAtual.time || 'nosso',
+    registrado_por: 'Auxiliar (voz)',
+  };
+  if (interpretacaoAtual.atleta_id) corpo.atleta_id = interpretacaoAtual.atleta_id;
+
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/eventos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  if (resp.ok) {
+    document.getElementById('ultimo-evento').textContent =
+      `${NOMES_EVENTO[interpretacaoAtual.tipo_evento]} registrado por voz aos ${formatar(segundosTotais)}`;
+    if (interpretacaoAtual.tipo_evento === 'substituicao' && substituicoesRealizadas < substituicoesPermitidas) {
+      substituicoesRealizadas++;
+      atualizarTextoSubstituicoes();
+    }
+  }
+
+  if (transcricaoIdAtual) {
+    fetch(`${API}/partidas/${PARTIDA_ID}/voz/transcricoes/${transcricaoIdAtual}/confirmar`, {
+      method: 'PATCH',
+      headers: authHeader(),
+    });
+  }
+
+  cancelarConfirmacaoVoz();
+}
+
+// --- TTS: lê a sugestão em voz alta automaticamente ---
+function falarTexto(texto) {
+  if (!('speechSynthesis' in window) || !texto) return;
+  const utter = new SpeechSynthesisUtterance(texto);
+  utter.lang = 'pt-BR';
+  window.speechSynthesis.speak(utter);
+}
+</script>
+
+</body>
+</html>

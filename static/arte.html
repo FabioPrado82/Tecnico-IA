@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arte de Divulgação — Técnico com IA</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
+  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tabs button { flex: 1; }
+  .tab-ativa { font-weight: 700; border-color: #1D9E75; color: #1D9E75; }
+  .checkbox-linha { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .checkbox-linha input { width: auto; }
+  canvas { width: 100%; border-radius: 12px; display: block; }
+  .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
+  #tela-login { }
+  #tela-arte { display: none; }
+</style>
+</head>
+<body>
+
+<div id="tela-login" class="card">
+  <h2>Entrar</h2>
+  <label>E-mail</label>
+  <input type="email" id="login-email" placeholder="seu@email.com">
+  <label>Senha</label>
+  <input type="password" id="login-senha">
+  <label>ID da partida</label>
+  <input type="number" id="login-partida" placeholder="ex: 1">
+  <button class="btn-primary" style="margin-top:16px;" onclick="entrar()">Entrar</button>
+  <p class="erro" id="login-erro" style="display:none;"></p>
+</div>
+
+<div id="tela-arte">
+  <div class="card">
+    <div class="tabs">
+      <button id="tab-pre" class="tab-ativa" onclick="mudarTipo('pre_jogo')">Pré-jogo</button>
+      <button id="tab-pos" onclick="mudarTipo('pos_jogo')">Pós-jogo</button>
+    </div>
+    <canvas id="canvas-arte" width="800" height="1000"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Jogadores em destaque (opcional, até 3)</h2>
+    <div id="grid-jogadores"></div>
+  </div>
+
+  <div class="card">
+    <h2>Patrocinadores</h2>
+    <button style="width:100%;margin-bottom:8px;" onclick="alternarNovoPatrocinador()">+ Novo patrocinador</button>
+    <div id="bloco-novo-patrocinador" style="display:none;margin-bottom:12px;">
+      <input type="text" id="input-novo-patrocinador" placeholder="Nome do patrocinador">
+      <button style="width:100%;margin-top:6px;" onclick="criarPatrocinador()">Criar</button>
+    </div>
+    <div id="grid-patrocinadores"></div>
+    <p style="font-size:12px;color:#888;margin-top:6px;" id="limite-patrocinadores"></p>
+  </div>
+
+  <div class="card">
+    <h2>Frase / slogan</h2>
+    <input type="text" id="input-frase" placeholder="Frase motivacional ou slogan">
+  </div>
+
+  <div class="card">
+    <button class="btn-primary" onclick="baixarPng()">Baixar PNG</button>
+    <button style="width:100%;margin-top:8px;" onclick="salvarArte()">Salvar registro desta arte</button>
+    <p class="erro" id="erro-arte" style="display:none;"></p>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let TOKEN = null;
+let PARTIDA_ID = null;
+let clube = null;
+let partida = null;
+let adversario = null;
+let atletas = [];
+let patrocinadores = [];
+let tipoAtual = 'pre_jogo';
+let jogadoresSelecionados = [];
+let patrocinadoresSelecionados = [];
+
+async function entrar() {
+  const email = document.getElementById('login-email').value;
+  const senha = document.getElementById('login-senha').value;
+  const partidaId = document.getElementById('login-partida').value;
+  const erro = document.getElementById('login-erro');
+  erro.style.display = 'none';
+
+  if (!email || !senha || !partidaId) {
+    erro.textContent = 'Preencha e-mail, senha e o ID da partida.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(senha)}`,
+    });
+    if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
+    const data = await resp.json();
+    TOKEN = data.access_token;
+    PARTIDA_ID = partidaId;
+
+    await carregarDados();
+
+    document.getElementById('tela-login').style.display = 'none';
+    document.getElementById('tela-arte').style.display = 'block';
+    document.getElementById('input-frase').value = clube.slogan || '';
+    montarGridJogadores();
+    montarGridPatrocinadores();
+    desenharArte();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.style.display = 'block';
+  }
+}
+
+function authHeader() {
+  return { 'Authorization': `Bearer ${TOKEN}` };
+}
+
+async function carregarDados() {
+  const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
+  partida = await partidaResp.json();
+
+  const clubeResp = await fetch(`${API}/clubes/${partida.clube_id}`, { headers: authHeader() });
+  clube = await clubeResp.json();
+
+  const advResp = await fetch(`${API}/adversarios`, { headers: authHeader() });
+  const adversarios = await advResp.json();
+  adversario = adversarios.find(a => a.id === partida.adversario_id);
+
+  const atletasResp = await fetch(`${API}/atletas?clube_id=${partida.clube_id}&ativo=true`, { headers: authHeader() });
+  atletas = await atletasResp.json();
+
+  const patResp = await fetch(`${API}/patrocinadores?clube_id=${partida.clube_id}`, { headers: authHeader() });
+  patrocinadores = await patResp.json();
+}
+
+function mudarTipo(tipo) {
+  tipoAtual = tipo;
+  document.getElementById('tab-pre').classList.toggle('tab-ativa', tipo === 'pre_jogo');
+  document.getElementById('tab-pos').classList.toggle('tab-ativa', tipo === 'pos_jogo');
+  desenharArte();
+}
+
+function montarGridJogadores() {
+  const div = document.getElementById('grid-jogadores');
+  div.innerHTML = atletas.map(a => `
+    <label class="checkbox-linha">
+      <input type="checkbox" value="${a.id}" onchange="alternarJogador(${a.id}, this)">
+      ${a.nome}
+    </label>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhum atleta cadastrado.</p>';
+}
+
+function alternarJogador(id, checkbox) {
+  if (checkbox.checked) {
+    if (jogadoresSelecionados.length >= 3) {
+      checkbox.checked = false;
+      alert('Máximo de 3 jogadores em destaque.');
+      return;
+    }
+    jogadoresSelecionados.push(id);
+  } else {
+    jogadoresSelecionados = jogadoresSelecionados.filter(j => j !== id);
+  }
+  desenharArte();
+}
+
+function montarGridPatrocinadores() {
+  const div = document.getElementById('grid-patrocinadores');
+  div.innerHTML = patrocinadores.map(p => `
+    <label class="checkbox-linha">
+      <input type="checkbox" value="${p.id}" onchange="alternarPatrocinador(${p.id}, this)">
+      ${p.nome}
+    </label>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhum patrocinador cadastrado.</p>';
+  document.getElementById('limite-patrocinadores').textContent =
+    `${patrocinadoresSelecionados.length} de ${clube.limite_patrocinadores} disponíveis no plano atual`;
+}
+
+function alternarPatrocinador(id, checkbox) {
+  if (checkbox.checked) {
+    if (patrocinadoresSelecionados.length >= clube.limite_patrocinadores) {
+      checkbox.checked = false;
+      alert(`Limite de ${clube.limite_patrocinadores} patrocinadores no plano atual.`);
+      return;
+    }
+    patrocinadoresSelecionados.push(id);
+  } else {
+    patrocinadoresSelecionados = patrocinadoresSelecionados.filter(p => p !== id);
+  }
+  document.getElementById('limite-patrocinadores').textContent =
+    `${patrocinadoresSelecionados.length} de ${clube.limite_patrocinadores} disponíveis no plano atual`;
+  desenharArte();
+}
+
+async function alternarNovoPatrocinador() {
+  const bloco = document.getElementById('bloco-novo-patrocinador');
+  bloco.style.display = bloco.style.display === 'none' ? 'block' : 'none';
+}
+
+async function criarPatrocinador() {
+  const nome = document.getElementById('input-novo-patrocinador').value;
+  if (!nome) return;
+  await fetch(`${API}/patrocinadores`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ clube_id: partida.clube_id, nome }),
+  });
+  document.getElementById('input-novo-patrocinador').value = '';
+  document.getElementById('bloco-novo-patrocinador').style.display = 'none';
+  const patResp = await fetch(`${API}/patrocinadores?clube_id=${partida.clube_id}`, { headers: authHeader() });
+  patrocinadores = await patResp.json();
+  montarGridPatrocinadores();
+}
+
+function iniciais(nome) {
+  return (nome || '').split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
+}
+
+function desenharArte() {
+  const canvas = document.getElementById('canvas-arte');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const corPrimaria = clube?.cor_primaria || '#1D9E75';
+
+  ctx.fillStyle = corPrimaria;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '600 22px sans-serif';
+  ctx.textAlign = 'center';
+  const nomeCampeonatoTexto = partida?.fase ? partida.fase : '';
+  ctx.fillText(nomeCampeonatoTexto, W / 2, 70);
+
+  // Escudos
+  desenharCirculo(ctx, 220, 200, 90, '#ffffff', corPrimaria, iniciais(clube?.nome || 'SC'), 32);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '20px sans-serif';
+  ctx.fillText('x', W / 2, 210);
+  desenharCirculo(ctx, W - 220, 200, 55, 'rgba(255,255,255,0.2)', '#ffffff', iniciais(adversario?.nome || 'AD'), 20);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '600 34px sans-serif';
+  if (tipoAtual === 'pre_jogo') {
+    ctx.fillText(`${clube?.nome || 'Save FC'} x ${adversario?.nome || 'Adversário'}`, W / 2, 360);
+    ctx.font = '20px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const dataTexto = partida?.data_hora ? new Date(partida.data_hora).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' }) : '';
+    ctx.fillText(dataTexto, W / 2, 400);
+    ctx.fillText(partida?.local_nome || '', W / 2, 430);
+  } else {
+    const placar = `${partida?.placar_nosso ?? 0} x ${partida?.placar_adversario ?? 0}`;
+    ctx.fillText(`Resultado: ${placar}`, W / 2, 360);
+    ctx.font = '20px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(`${clube?.nome || 'Save FC'} x ${adversario?.nome || 'Adversário'}`, W / 2, 400);
+  }
+
+  // Frase
+  const frase = document.getElementById('input-frase')?.value || '';
+  if (frase) {
+    ctx.font = 'italic 22px serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`"${frase}"`, W / 2, 500);
+  }
+
+  // Jogadores em destaque
+  const nomesJogadores = jogadoresSelecionados
+    .map(id => atletas.find(a => a.id === id))
+    .filter(Boolean);
+  const espacoTotal = nomesJogadores.length * 140;
+  let x0 = W / 2 - espacoTotal / 2 + 70;
+  nomesJogadores.forEach(a => {
+    desenharCirculo(ctx, x0, 620, 45, 'rgba(255,255,255,0.25)', '#ffffff', iniciais(a.nome), 16);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(a.nome.split(' ')[0], x0, 680);
+    x0 += 140;
+  });
+
+  // Rodapé de patrocinadores
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.moveTo(60, 880);
+  ctx.lineTo(W - 60, 880);
+  ctx.stroke();
+
+  const nomesPatrocinadores = patrocinadoresSelecionados
+    .map(id => patrocinadores.find(p => p.id === id))
+    .filter(Boolean);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillText('Patrocinadores', W / 2, 910);
+
+  const espacoPat = nomesPatrocinadores.length * 130;
+  let xp = W / 2 - espacoPat / 2 + 65;
+  nomesPatrocinadores.forEach(p => {
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(xp - 55, 930, 110, 40);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(p.nome, xp, 955);
+    xp += 130;
+  });
+}
+
+function desenharCirculo(ctx, x, y, raio, corFundo, corTexto, texto, tamanhoFonte) {
+  ctx.beginPath();
+  ctx.arc(x, y, raio, 0, Math.PI * 2);
+  ctx.fillStyle = corFundo;
+  ctx.fill();
+  ctx.fillStyle = corTexto;
+  ctx.font = `600 ${tamanhoFonte}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(texto, x, y);
+  ctx.textBaseline = 'alphabetic';
+}
+
+document.getElementById('input-frase')?.addEventListener('input', desenharArte);
+
+function baixarPng() {
+  const canvas = document.getElementById('canvas-arte');
+  const link = document.createElement('a');
+  link.download = `arte_${tipoAtual}_partida_${PARTIDA_ID}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function salvarArte() {
+  const erro = document.getElementById('erro-arte');
+  erro.style.display = 'none';
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/artes-divulgacao`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({
+      tipo: tipoAtual,
+      template: 'padrao',
+      jogadores_destaque: jogadoresSelecionados,
+      frase_personalizada: document.getElementById('input-frase').value,
+      patrocinadores_exibidos: patrocinadoresSelecionados,
+      criado_por: 'Comissão',
+    }),
+  });
+  if (!resp.ok) {
+    const data = await resp.json();
+    erro.textContent = data.detail || 'Erro ao salvar.';
+    erro.style.display = 'block';
+    return;
+  }
+  alert('Registro da arte salvo.');
+}
+</script>
+
+</body>
+</html>

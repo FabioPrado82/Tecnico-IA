@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel da Comissão — Técnico com IA</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
+  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
+  .linha { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .badge-confirmado { background: #eafaf3; color: #1D9E75; }
+  .badge-pendente { background: #fdf3e0; color: #b5750a; }
+  .badge-recusado { background: #fdecea; color: #c0392b; }
+  .pergunta-card { background: #f7f7f7; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .pergunta-card .opcoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .pergunta-card .opcoes button { padding: 6px 10px; font-size: 12px; }
+  .respondida { font-size: 12px; color: #1D9E75; margin-top: 4px; }
+  .linha-partida { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  .linha-partida .info { font-size: 13px; color: #666; }
+  #tela-login { }
+  #tela-partidas { display: none; }
+  #tela-painel { display: none; }
+  #form-nova-partida { display: none; border-top: 1px solid #eee; margin-top: 12px; padding-top: 12px; }
+</style>
+</head>
+<body>
+
+<div id="tela-login" class="card">
+  <h2>Entrar</h2>
+  <label>E-mail</label>
+  <input type="email" id="login-email" placeholder="seu@email.com">
+  <label>Senha</label>
+  <input type="password" id="login-senha">
+  <button class="btn-primary" style="margin-top:16px;" onclick="entrar()">Entrar</button>
+  <p class="erro" id="login-erro" style="display:none;"></p>
+</div>
+
+<div id="tela-partidas">
+  <div class="card">
+    <h2>Partidas</h2>
+    <div id="lista-partidas"></div>
+    <button style="width:100%;margin-top:12px;" onclick="alternarFormNovaPartida()">+ Nova partida</button>
+
+    <div id="form-nova-partida" style="display:none;">
+      <label>Campeonato</label>
+      <select id="nova-campeonato"></select>
+      <button style="margin-top:4px;font-size:12px;" onclick="alternarNovoCampeonato()">+ Novo campeonato</button>
+      <div id="bloco-novo-campeonato" style="display:none;margin-top:8px;">
+        <input type="text" id="input-novo-campeonato" placeholder="Nome do campeonato">
+        <button style="margin-top:6px;" onclick="criarCampeonato()">Criar campeonato</button>
+      </div>
+
+      <label>Adversário</label>
+      <select id="nova-adversario"></select>
+      <button style="margin-top:4px;font-size:12px;" onclick="alternarNovoAdversario()">+ Novo adversário</button>
+      <div id="bloco-novo-adversario" style="display:none;margin-top:8px;">
+        <input type="text" id="input-novo-adversario" placeholder="Nome do adversário">
+        <button style="margin-top:6px;" onclick="criarAdversario()">Criar adversário</button>
+      </div>
+
+      <label>Fase</label>
+      <input type="text" id="nova-fase" placeholder="ex: Quartas de final">
+
+      <label>Data e horário</label>
+      <input type="datetime-local" id="nova-data-hora">
+
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;">
+          <label>Local</label>
+          <select id="nova-local">
+            <option value="casa">Casa</option>
+            <option value="fora">Fora</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label>Duração do tempo (min)</label>
+          <input type="number" id="nova-duracao" value="45">
+        </div>
+      </div>
+
+      <label>Nome do local</label>
+      <input type="text" id="nova-local-nome" placeholder="ex: Campo do Bairro">
+
+      <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarPartida()">Criar partida</button>
+      <p class="erro" id="erro-nova-partida" style="display:none;"></p>
+    </div>
+  </div>
+</div>
+
+<div id="tela-painel">
+  <div class="card">
+    <button style="margin-bottom:8px;" onclick="voltarParaPartidas()">← Voltar pra lista de partidas</button>
+    <h2 id="titulo-partida">Partida</h2>
+  </div>
+
+  <div class="card">
+    <h2>Convocação</h2>
+    <div id="lista-convocacao"></div>
+  </div>
+
+  <div class="card">
+    <h2>Scouting do adversário</h2>
+    <button style="width:100%;" onclick="inicializarScouting()">Carregar/iniciar formulário</button>
+    <button style="width:100%;margin-top:8px;" onclick="gerarPerguntasDinamicas()">Gerar perguntas específicas (IA)</button>
+    <div id="lista-scouting" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Retrospecto pós-jogo</h2>
+    <button style="width:100%;" onclick="gerarRetrospecto()">Gerar retrospecto</button>
+    <div id="area-retrospecto" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let TOKEN = null;
+let CLUBE_ID = null;
+let PARTIDA_ID = null;
+
+async function entrar() {
+  const email = document.getElementById('login-email').value;
+  const senha = document.getElementById('login-senha').value;
+  const erro = document.getElementById('login-erro');
+  erro.style.display = 'none';
+
+  if (!email || !senha) {
+    erro.textContent = 'Preencha e-mail e senha.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${encodeURIComponent(email)}&password=${encodeURIComponent(senha)}`,
+    });
+    if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
+    const data = await resp.json();
+    TOKEN = data.access_token;
+
+    const meResp = await fetch(`${API}/auth/me`, { headers: authHeader() });
+    const me = await meResp.json();
+    CLUBE_ID = me.clube_id;
+
+    document.getElementById('tela-login').style.display = 'none';
+    document.getElementById('tela-partidas').style.display = 'block';
+    await carregarListasBase();
+    await carregarPartidas();
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.style.display = 'block';
+  }
+}
+
+function authHeader() {
+  return { 'Authorization': `Bearer ${TOKEN}` };
+}
+
+let campeonatosCache = [];
+let adversariosCache = [];
+
+async function carregarListasBase() {
+  const campResp = await fetch(`${API}/campeonatos?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+  campeonatosCache = await campResp.json();
+  document.getElementById('nova-campeonato').innerHTML =
+    campeonatosCache.map(c => `<option value="${c.id}">${c.nome}${c.temporada ? ' (' + c.temporada + ')' : ''}</option>`).join('')
+    || '<option value="">Nenhum campeonato — crie um</option>';
+
+  const advResp = await fetch(`${API}/adversarios`, { headers: authHeader() });
+  adversariosCache = await advResp.json();
+  document.getElementById('nova-adversario').innerHTML =
+    adversariosCache.map(a => `<option value="${a.id}">${a.nome}</option>`).join('')
+    || '<option value="">Nenhum adversário — crie um</option>';
+}
+
+async function carregarPartidas() {
+  const resp = await fetch(`${API}/partidas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+  const partidas = await resp.json();
+  const mapaAdversarios = Object.fromEntries(adversariosCache.map(a => [a.id, a.nome]));
+
+  const div = document.getElementById('lista-partidas');
+  div.innerHTML = partidas.map(p => `
+    <div class="linha-partida">
+      <div>
+        <div>Save FC x ${mapaAdversarios[p.adversario_id] || '?'}</div>
+        <div class="info">${p.fase || ''} · ${new Date(p.data_hora).toLocaleDateString('pt-BR')} · ${p.status}</div>
+      </div>
+      <button onclick="selecionarPartida(${p.id})">Abrir</button>
+    </div>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhuma partida criada ainda.</p>';
+}
+
+function alternarFormNovaPartida() {
+  const form = document.getElementById('form-nova-partida');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+function alternarNovoCampeonato() {
+  const bloco = document.getElementById('bloco-novo-campeonato');
+  bloco.style.display = bloco.style.display === 'none' ? 'block' : 'none';
+}
+function alternarNovoAdversario() {
+  const bloco = document.getElementById('bloco-novo-adversario');
+  bloco.style.display = bloco.style.display === 'none' ? 'block' : 'none';
+}
+
+async function criarCampeonato() {
+  const nome = document.getElementById('input-novo-campeonato').value;
+  if (!nome) return;
+  await fetch(`${API}/campeonatos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ clube_id: CLUBE_ID, nome }),
+  });
+  document.getElementById('input-novo-campeonato').value = '';
+  document.getElementById('bloco-novo-campeonato').style.display = 'none';
+  await carregarListasBase();
+}
+
+async function criarAdversario() {
+  const nome = document.getElementById('input-novo-adversario').value;
+  if (!nome) return;
+  await fetch(`${API}/adversarios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ nome }),
+  });
+  document.getElementById('input-novo-adversario').value = '';
+  document.getElementById('bloco-novo-adversario').style.display = 'none';
+  await carregarListasBase();
+}
+
+async function criarPartida() {
+  const erro = document.getElementById('erro-nova-partida');
+  erro.style.display = 'none';
+
+  const campeonatoId = document.getElementById('nova-campeonato').value;
+  const adversarioId = document.getElementById('nova-adversario').value;
+  const dataHora = document.getElementById('nova-data-hora').value;
+
+  if (!campeonatoId || !adversarioId || !dataHora) {
+    erro.textContent = 'Preencha campeonato, adversário e data/horário.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const corpo = {
+    clube_id: CLUBE_ID,
+    campeonato_id: Number(campeonatoId),
+    adversario_id: Number(adversarioId),
+    fase: document.getElementById('nova-fase').value || null,
+    data_hora: new Date(dataHora).toISOString(),
+    local: document.getElementById('nova-local').value,
+    duracao_tempo_min: Number(document.getElementById('nova-duracao').value) || 45,
+    local_nome: document.getElementById('nova-local-nome').value || null,
+  };
+
+  const resp = await fetch(`${API}/partidas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    erro.textContent = data.detail || 'Erro ao criar a partida.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('form-nova-partida').style.display = 'none';
+  selecionarPartida(data.id);
+}
+
+function selecionarPartida(id) {
+  PARTIDA_ID = id;
+  document.getElementById('tela-partidas').style.display = 'none';
+  document.getElementById('tela-painel').style.display = 'block';
+  document.getElementById('titulo-partida').textContent = `Partida #${PARTIDA_ID}`;
+  carregarConvocacao();
+  carregarScouting();
+}
+
+function voltarParaPartidas() {
+  document.getElementById('tela-painel').style.display = 'none';
+  document.getElementById('tela-partidas').style.display = 'block';
+  carregarPartidas();
+}
+
+async function carregarConvocacao() {
+  const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
+  const partida = await partidaResp.json();
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/convocacao`, { headers: authHeader() });
+  const lista = await resp.json();
+  const atletasResp = await fetch(`${API}/atletas?clube_id=${partida.clube_id}`, { headers: authHeader() });
+  const atletas = await atletasResp.json();
+  const mapaNomes = Object.fromEntries(atletas.map(a => [a.id, a.nome]));
+
+  const div = document.getElementById('lista-convocacao');
+  const badges = { confirmado: 'badge-confirmado', pendente: 'badge-pendente', recusado: 'badge-recusado' };
+  div.innerHTML = lista.map(c => `
+    <div class="linha">
+      <span>${mapaNomes[c.atleta_id] || `Atleta #${c.atleta_id}`}</span>
+      <span class="badge ${badges[c.presenca_confirmada]}">${c.presenca_confirmada}</span>
+    </div>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhuma convocação encontrada.</p>';
+}
+
+async function inicializarScouting() {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/scouting/inicializar`, {
+    method: 'POST',
+    headers: authHeader(),
+  });
+  await carregarScouting();
+}
+
+async function carregarScouting() {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/scouting`, { headers: authHeader() });
+  const perguntas = await resp.json();
+  renderScouting(perguntas);
+}
+
+function renderScouting(perguntas) {
+  const div = document.getElementById('lista-scouting');
+  if (perguntas.length === 0) {
+    div.innerHTML = '<p style="font-size:13px;color:#888;">Nenhuma pergunta carregada ainda.</p>';
+    return;
+  }
+  div.innerHTML = '';
+  perguntas.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pergunta-card';
+    let opcoesHtml = '';
+    if (p.tipo_resposta === 'multipla_escolha' && p.opcoes) {
+      opcoesHtml = `<div class="opcoes">${p.opcoes.map(op =>
+        `<button onclick="responderScouting(${p.id}, '${op.replace(/'/g, "\\'")}')">${op}</button>`
+      ).join('')}</div>`;
+    } else {
+      opcoesHtml = `<textarea id="resp-${p.id}" rows="2" placeholder="Resposta"></textarea>
+        <button style="margin-top:6px;" onclick="responderScoutingTexto(${p.id})">Salvar</button>`;
+    }
+    card.innerHTML = `
+      <div style="font-size:13px;font-weight:500;">${p.tipo_pergunta === 'dinamica' ? '✦ ' : ''}${p.pergunta}</div>
+      ${opcoesHtml}
+      ${p.resposta ? `<div class="respondida">Respondido: ${p.resposta} ${p.respondido_por ? '— ' + p.respondido_por : ''}</div>` : ''}
+    `;
+    div.appendChild(card);
+  });
+}
+
+async function responderScouting(perguntaId, resposta) {
+  await fetch(`${API}/scouting/${perguntaId}/responder`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ resposta, respondido_por: 'Comissão' }),
+  });
+  await carregarScouting();
+}
+
+async function responderScoutingTexto(perguntaId) {
+  const resposta = document.getElementById(`resp-${perguntaId}`).value;
+  if (!resposta) return;
+  await responderScouting(perguntaId, resposta);
+}
+
+async function gerarPerguntasDinamicas() {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/scouting/gerar-dinamicas`, {
+    method: 'POST',
+    headers: authHeader(),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    document.getElementById('lista-scouting').insertAdjacentHTML('beforeend',
+      `<p class="erro">${data.detail || 'Erro ao gerar perguntas dinâmicas.'}</p>`);
+    return;
+  }
+  await carregarScouting();
+}
+
+async function gerarRetrospecto() {
+  const div = document.getElementById('area-retrospecto');
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/retrospecto/gerar`, {
+    method: 'POST',
+    headers: authHeader(),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    div.innerHTML = `<p class="erro">${data.detail || 'Erro ao gerar retrospecto.'}</p>`;
+    return;
+  }
+  div.innerHTML = `
+    <p style="font-size:13px;"><strong>Status:</strong> ${data.status}</p>
+    <label>Pontos positivos</label>
+    <textarea id="ret-positivos" rows="3">${data.pontos_positivos || ''}</textarea>
+    <label>Pontos negativos</label>
+    <textarea id="ret-negativos" rows="3">${data.pontos_negativos || ''}</textarea>
+    <label>Lições aprendidas</label>
+    <textarea id="ret-licoes" rows="3">${data.licoes_aprendidas || ''}</textarea>
+    <button class="btn-primary" style="margin-top:12px;" onclick="aprovarRetrospecto()">Aprovar retrospecto</button>
+  `;
+}
+
+async function aprovarRetrospecto() {
+  const resp = await fetch(`${API}/partidas/${PARTIDA_ID}/retrospecto/aprovar`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({
+      revisado_por: 'Comissão',
+      pontos_positivos: document.getElementById('ret-positivos').value,
+      pontos_negativos: document.getElementById('ret-negativos').value,
+      licoes_aprendidas: document.getElementById('ret-licoes').value,
+    }),
+  });
+  if (resp.ok) {
+    document.getElementById('area-retrospecto').insertAdjacentHTML('afterbegin',
+      '<p style="color:#1D9E75;font-size:13px;">Retrospecto aprovado.</p>');
+  }
+}
+</script>
+
+</body>
+</html>

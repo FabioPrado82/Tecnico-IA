@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirmação de presença</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 420px; margin: 0 auto; padding: 24px 16px; background: #fafafa; color: #1a1a1a; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; background: #eafaf3; color: #1D9E75; display: flex; align-items: center; justify-content: center; font-weight: 600; margin: 0 auto 8px; }
+  .clube { text-align: center; font-size: 13px; color: #666; margin: 0 0 20px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .info { font-size: 13px; color: #666; margin: 2px 0; }
+  .aviso { font-size: 13px; background: #fff8e6; color: #9a6b00; border-radius: 8px; padding: 10px 12px; margin-top: 12px; }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 15px; padding: 14px; }
+  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; }
+  .row { display: flex; gap: 10px; margin-top: 16px; }
+  .row button { flex: 1; }
+  .grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 8px; }
+  .grid4 button { padding: 10px 4px; font-size: 13px; }
+  .selecionado { border-color: #1D9E75 !important; color: #1D9E75; font-weight: 600; }
+  textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; min-height: 60px; margin-top: 8px; }
+  #carregando, #erro-geral, #ja-respondido, #conteudo, #confirmado { display: none; }
+  .check { text-align: center; padding: 20px 0; }
+  .check-icone { width: 48px; height: 48px; border-radius: 50%; background: #eafaf3; color: #1D9E75; font-size: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+</style>
+</head>
+<body>
+
+<div id="carregando" class="card" style="text-align:center;">Carregando...</div>
+<div id="erro-geral" class="card" style="text-align:center;color:#c0392b;"></div>
+
+<div id="conteudo">
+  <div class="avatar" id="avatar-iniciais">SC</div>
+  <p class="clube">Save FC</p>
+
+  <div class="card">
+    <h1 id="titulo-confronto"></h1>
+    <p class="info" id="info-data"></p>
+    <p class="info" id="info-vestiario"></p>
+    <p class="info" id="info-local"></p>
+    <div class="aviso" id="aviso-clima" style="display:none;"></div>
+  </div>
+
+  <div class="card">
+    <p style="font-size:15px;margin:0 0 4px;" id="saudacao"></p>
+    <p style="font-size:13px;color:#666;margin:0;">Você vai poder jogar?</p>
+
+    <div id="passo-presenca" class="row">
+      <button class="btn-primary" onclick="escolherPresenca(true)">Vou</button>
+      <button onclick="escolherPresenca(false)">Não vou</button>
+    </div>
+
+    <div id="passo-vou" style="display:none;">
+      <p style="font-size:13px;color:#666;margin:16px 0 0;">Quantos jogos você já vai ter feito antes deste (hoje ou neste fim de semana)?</p>
+      <div class="grid4" id="grupo-jogos">
+        <button onclick="escolherJogos(0,this)">Nenhum</button>
+        <button onclick="escolherJogos(1,this)">1 jogo</button>
+        <button onclick="escolherJogos(2,this)">2 jogos</button>
+        <button onclick="escolherJogos(3,this)">3 ou +</button>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:16px;" onclick="enviar(true)">Confirmar presença</button>
+    </div>
+
+    <div id="passo-naovou" style="display:none;">
+      <p style="font-size:13px;color:#666;margin:16px 0 0;">Qual o motivo? (opcional)</p>
+      <textarea id="motivo"></textarea>
+      <button style="width:100%;margin-top:12px;" onclick="enviar(false)">Enviar resposta</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirmado" class="card check">
+  <div class="check-icone">✓</div>
+  <p id="mensagem-final" style="font-size:14px;margin:0;"></p>
+</div>
+
+<script>
+const API = window.location.origin;
+const params = new URLSearchParams(window.location.search);
+const TOKEN = params.get('token');
+let jogosEscolhidos = null;
+
+async function carregar() {
+  if (!TOKEN) {
+    mostrarErro('Link inválido — falta o token de confirmação.');
+    return;
+  }
+  document.getElementById('carregando').style.display = 'block';
+  try {
+    const resp = await fetch(`${API}/confirmar/${TOKEN}`);
+    const data = await resp.json();
+    document.getElementById('carregando').style.display = 'none';
+
+    if (!resp.ok) {
+      mostrarErro(data.detail || 'Não foi possível carregar essa confirmação.');
+      return;
+    }
+
+    if (data.presenca_confirmada !== 'pendente') {
+      document.getElementById('mensagem-final').textContent =
+        data.presenca_confirmada === 'confirmado'
+          ? 'Você já confirmou presença para este jogo.'
+          : 'Você já respondeu que não vai poder jogar.';
+      document.getElementById('confirmado').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('avatar-iniciais').textContent =
+      (data.atleta_nome || '').split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    document.getElementById('saudacao').textContent = `Olá, ${data.atleta_nome.split(' ')[0]}`;
+    document.getElementById('titulo-confronto').textContent =
+      `Save FC x ${data.adversario_nome || 'Adversário'}${data.fase ? ' — ' + data.fase : ''}`;
+    document.getElementById('info-data').textContent = data.data_hora
+      ? new Date(data.data_hora).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' })
+      : '';
+    document.getElementById('info-vestiario').textContent = data.horario_chegada_vestiario
+      ? 'Chegar no vestiário às ' + new Date(data.horario_chegada_vestiario).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    document.getElementById('info-local').textContent = data.local_nome || '';
+
+    document.getElementById('conteudo').style.display = 'block';
+  } catch (e) {
+    document.getElementById('carregando').style.display = 'none';
+    mostrarErro('Erro ao conectar com o servidor.');
+  }
+}
+
+function mostrarErro(msg) {
+  const el = document.getElementById('erro-geral');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function escolherPresenca(vai) {
+  document.getElementById('passo-presenca').style.display = 'none';
+  document.getElementById('passo-vou').style.display = vai ? 'block' : 'none';
+  document.getElementById('passo-naovou').style.display = vai ? 'none' : 'block';
+}
+
+function escolherJogos(qtd, btn) {
+  jogosEscolhidos = qtd;
+  document.querySelectorAll('#grupo-jogos button').forEach(b => b.classList.remove('selecionado'));
+  btn.classList.add('selecionado');
+}
+
+async function enviar(vai) {
+  const corpo = { presenca_confirmada: vai ? 'confirmado' : 'recusado' };
+  if (vai) {
+    corpo.jogos_antes_desta_partida = jogosEscolhidos;
+  } else {
+    corpo.motivo_indisponibilidade = document.getElementById('motivo').value;
+  }
+
+  try {
+    const resp = await fetch(`${API}/confirmar/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      mostrarErro(data.detail || 'Erro ao enviar sua resposta.');
+      return;
+    }
+    document.getElementById('conteudo').style.display = 'none';
+    document.getElementById('mensagem-final').textContent =
+      vai ? 'Presença confirmada. Bom jogo!' : 'Resposta registrada. Melhoras!';
+    document.getElementById('confirmado').style.display = 'block';
+  } catch (e) {
+    mostrarErro('Erro ao conectar com o servidor.');
+  }
+}
+
+carregar();
+</script>
+
+</body>
+</html>
