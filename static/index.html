@@ -25,6 +25,16 @@
   #tela-partidas { display: none; }
   .sair { text-align: center; margin-top: 8px; }
   .sair button { background: none; border: none; color: #999; font-size: 12px; text-decoration: underline; }
+  .abas { display: flex; gap: 8px; margin-bottom: 16px; }
+  .abas button { flex: 1; padding: 10px; }
+  .aba-ativa { font-weight: 700; border-color: #1D9E75 !important; color: #1D9E75; }
+  #secao-atletas { display: none; }
+  .linha-atleta { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-top: 6px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #333; margin: 0; }
+  .chk input { width: auto; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 </style>
 </head>
 <body>
@@ -42,6 +52,12 @@
 </div>
 
 <div id="tela-partidas">
+  <div class="abas">
+    <button id="aba-partidas" class="aba-ativa" onclick="mudarAba('partidas')">Partidas</button>
+    <button id="aba-atletas" onclick="mudarAba('atletas')">Atletas</button>
+  </div>
+
+  <div id="secao-partidas">
   <div class="card">
     <h2>Partidas</h2>
     <div id="lista-partidas"></div>
@@ -70,15 +86,15 @@
       <label>Data e horário</label>
       <input type="datetime-local" id="nova-data-hora">
 
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1;">
+      <div class="row2">
+        <div>
           <label>Local</label>
           <select id="nova-local">
             <option value="casa">Casa</option>
             <option value="fora">Fora</option>
           </select>
         </div>
-        <div style="flex:1;">
+        <div>
           <label>Duração do tempo (min)</label>
           <input type="number" id="nova-duracao" value="45">
         </div>
@@ -89,6 +105,75 @@
 
       <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarPartida()">Criar partida</button>
       <p class="erro" id="erro-nova-partida" style="display:none;"></p>
+    </div>
+  </div>
+  </div>
+
+  <div id="secao-atletas">
+    <div class="card">
+      <h2>Elenco</h2>
+      <div id="lista-atletas"></div>
+      <button style="width:100%;margin-top:12px;" onclick="alternarFormNovoAtleta()">+ Novo atleta</button>
+
+      <div id="form-novo-atleta" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
+        <label>Nome completo *</label>
+        <input type="text" id="atleta-nome" placeholder="Nome completo">
+
+        <label>Apelido</label>
+        <input type="text" id="atleta-apelido" placeholder="Como é chamado no time">
+
+        <div class="row2">
+          <div><label>Data de nascimento</label><input type="date" id="atleta-data-nascimento"></div>
+          <div><label>CPF</label><input type="text" id="atleta-cpf" placeholder="000.000.000-00" maxlength="14"></div>
+        </div>
+
+        <div class="row3">
+          <div><label>Idade</label><input type="number" id="atleta-idade" placeholder="anos"></div>
+          <div><label>Altura (cm)</label><input type="number" id="atleta-altura"></div>
+          <div><label>Peso (kg)</label><input type="number" id="atleta-peso"></div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label>Posição principal</label>
+            <select id="atleta-posicao">
+              <option value="">Selecione</option>
+              <option>Goleiro</option>
+              <option>Zagueiro</option>
+              <option>Lateral direito</option>
+              <option>Lateral esquerdo</option>
+              <option>Volante</option>
+              <option>Meia</option>
+              <option>Ponta</option>
+              <option>Atacante</option>
+            </select>
+          </div>
+          <div>
+            <label>Pé dominante</label>
+            <select id="atleta-pe">
+              <option value="">Selecione</option>
+              <option value="destro">Destro</option>
+              <option value="canhoto">Canhoto</option>
+              <option value="ambidestro">Ambidestro</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Posição(ões) secundária(s)</label>
+        <div class="checkbox-grid" id="atleta-posicoes-secundarias">
+          <label class="chk"><input type="checkbox" value="Goleiro"> Goleiro</label>
+          <label class="chk"><input type="checkbox" value="Zagueiro"> Zagueiro</label>
+          <label class="chk"><input type="checkbox" value="Lateral direito"> Lateral direito</label>
+          <label class="chk"><input type="checkbox" value="Lateral esquerdo"> Lateral esquerdo</label>
+          <label class="chk"><input type="checkbox" value="Volante"> Volante</label>
+          <label class="chk"><input type="checkbox" value="Meia"> Meia</label>
+          <label class="chk"><input type="checkbox" value="Ponta"> Ponta</label>
+          <label class="chk"><input type="checkbox" value="Atacante"> Atacante</label>
+        </div>
+
+        <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarAtleta()">Cadastrar atleta</button>
+        <p class="erro" id="erro-novo-atleta" style="display:none;"></p>
+      </div>
     </div>
   </div>
 
@@ -268,6 +353,122 @@ async function criarPartida() {
   await carregarListasBase();
   await carregarPartidas();
 }
+function mudarAba(aba) {
+  document.getElementById('aba-partidas').classList.toggle('aba-ativa', aba === 'partidas');
+  document.getElementById('aba-atletas').classList.toggle('aba-ativa', aba === 'atletas');
+  document.getElementById('secao-partidas').style.display = aba === 'partidas' ? 'block' : 'none';
+  document.getElementById('secao-atletas').style.display = aba === 'atletas' ? 'block' : 'none';
+  if (aba === 'atletas') carregarAtletas();
+}
+
+function alternarFormNovoAtleta() {
+  const form = document.getElementById('form-novo-atleta');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function mascararCpf(valor) {
+  const digitos = valor.replace(/\D/g, '').slice(0, 11);
+  return digitos
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+function calcularIdade(dataNascimento) {
+  const nascimento = new Date(dataNascimento);
+  if (isNaN(nascimento.getTime())) return null;
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nascimento.getMonth() ||
+    (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate());
+  if (aindaNaoFezAniversario) idade--;
+  return idade;
+}
+
+async function carregarAtletas() {
+  const resp = await fetch(`${API}/atletas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+  const atletas = await resp.json();
+  const div = document.getElementById('lista-atletas');
+  div.innerHTML = atletas.map(a => `
+    <div class="linha-atleta">
+      <span>${a.nome}${a.apelido ? ' ("' + a.apelido + '")' : ''}</span>
+      <span style="color:#888;font-size:12px;">${a.posicao_principal || 'sem posição'}</span>
+    </div>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhum atleta cadastrado ainda.</p>';
+}
+
+function pegarPosicoesSecundariasAtleta() {
+  const marcadas = document.querySelectorAll('#atleta-posicoes-secundarias input:checked');
+  return Array.from(marcadas).map(c => c.value);
+}
+
+async function criarAtleta() {
+  const erro = document.getElementById('erro-novo-atleta');
+  erro.style.display = 'none';
+  const nome = document.getElementById('atleta-nome').value;
+  if (!nome) {
+    erro.textContent = 'Preencha ao menos o nome.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const corpo = {
+    clube_id: CLUBE_ID,
+    nome,
+    apelido: document.getElementById('atleta-apelido').value || null,
+    cpf: document.getElementById('atleta-cpf').value || null,
+    data_nascimento: document.getElementById('atleta-data-nascimento').value || null,
+    posicao_principal: document.getElementById('atleta-posicao').value || null,
+    pe_dominante: document.getElementById('atleta-pe').value || null,
+    altura_cm: document.getElementById('atleta-altura').value ? Number(document.getElementById('atleta-altura').value) : null,
+    peso_kg: document.getElementById('atleta-peso').value ? Number(document.getElementById('atleta-peso').value) : null,
+    posicoes_secundarias: pegarPosicoesSecundariasAtleta(),
+  };
+
+  const resp = await fetch(`${API}/atletas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(corpo),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    erro.textContent = data.detail || 'Erro ao cadastrar atleta.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('atleta-nome').value = '';
+  document.getElementById('atleta-apelido').value = '';
+  document.getElementById('atleta-cpf').value = '';
+  document.getElementById('atleta-data-nascimento').value = '';
+  document.getElementById('atleta-idade').value = '';
+  document.getElementById('atleta-posicao').value = '';
+  document.getElementById('atleta-pe').value = '';
+  document.getElementById('atleta-altura').value = '';
+  document.getElementById('atleta-peso').value = '';
+  document.querySelectorAll('#atleta-posicoes-secundarias input:checked').forEach(c => c.checked = false);
+  document.getElementById('form-novo-atleta').style.display = 'none';
+  await carregarAtletas();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('atleta-cpf').addEventListener('input', (e) => {
+    e.target.value = mascararCpf(e.target.value);
+  });
+  document.getElementById('atleta-data-nascimento').addEventListener('change', (e) => {
+    const idadeCampo = document.getElementById('atleta-idade');
+    if (!e.target.value) {
+      idadeCampo.readOnly = false;
+      return;
+    }
+    const idade = calcularIdade(e.target.value);
+    if (idade !== null) {
+      idadeCampo.value = idade;
+      idadeCampo.readOnly = true;
+    }
+  });
+});
 </script>
 
 </body>
