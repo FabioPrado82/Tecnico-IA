@@ -55,6 +55,7 @@
   <div class="abas">
     <button id="aba-partidas" class="aba-ativa" onclick="mudarAba('partidas')">Partidas</button>
     <button id="aba-atletas" onclick="mudarAba('atletas')">Atletas</button>
+    <button id="aba-adversarios" onclick="mudarAba('adversarios')">Adversários</button>
   </div>
 
   <div id="secao-partidas">
@@ -62,7 +63,6 @@
     <h2>Partidas</h2>
     <div id="lista-partidas"></div>
     <button style="width:100%;margin-top:12px;" onclick="alternarFormNovaPartida()">+ Nova partida</button>
-
     <div id="form-nova-partida">
       <label>Campeonato</label>
       <select id="nova-campeonato"></select>
@@ -106,6 +106,12 @@
       <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarPartida()">Criar partida</button>
       <p class="erro" id="erro-nova-partida" style="display:none;"></p>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Arte de divulgação avulsa</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 10px;">Gera uma arte rápida sem precisar criar uma partida no sistema.</p>
+    <a id="link-arte-avulsa" href="#" style="display:block;text-align:center;background:#f7f7f7;border-radius:8px;padding:12px;text-decoration:none;color:#1a1a1a;font-weight:500;font-size:14px;">Criar arte avulsa</a>
   </div>
   </div>
 
@@ -177,6 +183,25 @@
     </div>
   </div>
 
+  <div id="secao-adversarios" style="display:none;">
+    <div class="card">
+      <h2>Adversários</h2>
+      <div id="lista-adversarios-tab"></div>
+      <button style="width:100%;margin-top:12px;" onclick="alternarFormNovoAdversarioTab()">+ Novo adversário</button>
+
+      <div id="form-novo-adversario-tab" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
+        <label>Nome do adversário *</label>
+        <input type="text" id="adversario-nome-tab" placeholder="Nome do time">
+
+        <label>URL do escudo (opcional)</label>
+        <input type="text" id="adversario-logo-tab" placeholder="https://...">
+
+        <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarAdversarioTab()">Cadastrar adversário</button>
+        <p class="erro" id="erro-novo-adversario-tab" style="display:none;"></p>
+      </div>
+    </div>
+  </div>
+
   <div class="sair">
     <button onclick="sair()">Sair</button>
   </div>
@@ -215,6 +240,7 @@ async function entrar() {
 
     document.getElementById('tela-login').style.display = 'none';
     document.getElementById('tela-partidas').style.display = 'block';
+    document.getElementById('link-arte-avulsa').href = `arte.html?token=${TOKEN}`;
     await carregarListasBase();
     await carregarPartidas();
   } catch (e) {
@@ -356,9 +382,61 @@ async function criarPartida() {
 function mudarAba(aba) {
   document.getElementById('aba-partidas').classList.toggle('aba-ativa', aba === 'partidas');
   document.getElementById('aba-atletas').classList.toggle('aba-ativa', aba === 'atletas');
+  document.getElementById('aba-adversarios').classList.toggle('aba-ativa', aba === 'adversarios');
   document.getElementById('secao-partidas').style.display = aba === 'partidas' ? 'block' : 'none';
   document.getElementById('secao-atletas').style.display = aba === 'atletas' ? 'block' : 'none';
+  document.getElementById('secao-adversarios').style.display = aba === 'adversarios' ? 'block' : 'none';
   if (aba === 'atletas') carregarAtletas();
+  if (aba === 'adversarios') carregarAdversariosTab();
+}
+
+function alternarFormNovoAdversarioTab() {
+  const form = document.getElementById('form-novo-adversario-tab');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function carregarAdversariosTab() {
+  const resp = await fetch(`${API}/adversarios`, { headers: authHeader() });
+  const adversarios = await resp.json();
+  const div = document.getElementById('lista-adversarios-tab');
+  div.innerHTML = adversarios.map(a => `
+    <div class="linha-atleta">
+      <span>${a.nome}</span>
+      <span style="color:#888;font-size:12px;">${a.logo_url ? 'com escudo' : 'sem escudo'}</span>
+    </div>
+  `).join('') || '<p style="font-size:13px;color:#888;">Nenhum adversário cadastrado ainda.</p>';
+}
+
+async function criarAdversarioTab() {
+  const erro = document.getElementById('erro-novo-adversario-tab');
+  erro.style.display = 'none';
+  const nome = document.getElementById('adversario-nome-tab').value;
+  if (!nome) {
+    erro.textContent = 'Preencha o nome do adversário.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const resp = await fetch(`${API}/adversarios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({
+      nome,
+      logo_url: document.getElementById('adversario-logo-tab').value || null,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    erro.textContent = data.detail || 'Erro ao cadastrar adversário.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('adversario-nome-tab').value = '';
+  document.getElementById('adversario-logo-tab').value = '';
+  document.getElementById('form-novo-adversario-tab').style.display = 'none';
+  await carregarAdversariosTab();
+  await carregarListasBase();
 }
 
 function alternarFormNovoAtleta() {

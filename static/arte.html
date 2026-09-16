@@ -32,13 +32,33 @@
   <input type="email" id="login-email" placeholder="seu@email.com">
   <label>Senha</label>
   <input type="password" id="login-senha">
-  <label>ID da partida</label>
+  <label>ID da partida (deixe em branco para arte avulsa)</label>
   <input type="number" id="login-partida" placeholder="ex: 1">
   <button class="btn-primary" style="margin-top:16px;" onclick="entrar()">Entrar</button>
   <p class="erro" id="login-erro" style="display:none;"></p>
 </div>
 
 <div id="tela-arte">
+  <div class="card" id="card-dados-avulsos" style="display:none;">
+    <h2>Dados do confronto</h2>
+    <label>Adversário</label>
+    <select id="avulso-adversario"></select>
+    <label>Fase / competição</label>
+    <input type="text" id="avulso-fase" placeholder="ex: Quartas de final, amistoso...">
+    <label>Data e horário (texto livre)</label>
+    <input type="text" id="avulso-data" placeholder="ex: Domingo, 14h00">
+    <label>Local</label>
+    <input type="text" id="avulso-local" placeholder="ex: Campo do Bairro">
+    <div id="avulso-placar" style="display:none;">
+      <label>Placar</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="avulso-placar-nosso" placeholder="Nós" style="width:70px;">
+        <span>x</span>
+        <input type="number" id="avulso-placar-adversario" placeholder="Eles" style="width:70px;">
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="tabs">
       <button id="tab-pre" class="tab-ativa" onclick="mudarTipo('pre_jogo')">Pré-jogo</button>
@@ -70,7 +90,7 @@
 
   <div class="card">
     <button class="btn-primary" onclick="baixarPng()">Baixar PNG</button>
-    <button style="width:100%;margin-top:8px;" onclick="salvarArte()">Salvar registro desta arte</button>
+    <button id="btn-salvar-arte" style="width:100%;margin-top:8px;" onclick="salvarArte()">Salvar registro desta arte</button>
     <p class="erro" id="erro-arte" style="display:none;"></p>
   </div>
 </div>
@@ -88,6 +108,8 @@ let tipoAtual = 'pre_jogo';
 let jogadoresSelecionados = [];
 let patrocinadoresSelecionados = [];
 
+let modoAvulso = false;
+
 async function entrar() {
   const email = document.getElementById('login-email').value;
   const senha = document.getElementById('login-senha').value;
@@ -95,8 +117,8 @@ async function entrar() {
   const erro = document.getElementById('login-erro');
   erro.style.display = 'none';
 
-  if (!email || !senha || !partidaId) {
-    erro.textContent = 'Preencha e-mail, senha e o ID da partida.';
+  if (!email || !senha) {
+    erro.textContent = 'Preencha e-mail e senha.';
     erro.style.display = 'block';
     return;
   }
@@ -109,7 +131,7 @@ async function entrar() {
     });
     if (!resp.ok) throw new Error('E-mail ou senha incorretos.');
     const data = await resp.json();
-    await entrarComTokenEPartida(data.access_token, partidaId);
+    await entrarComTokenEPartida(data.access_token, partidaId || null);
   } catch (e) {
     erro.textContent = e.message;
     erro.style.display = 'block';
@@ -119,12 +141,24 @@ async function entrar() {
 async function entrarComTokenEPartida(token, partidaId) {
   TOKEN = token;
   PARTIDA_ID = partidaId;
+  modoAvulso = !partidaId;
 
   await carregarDados();
 
   document.getElementById('tela-login').style.display = 'none';
   document.getElementById('tela-arte').style.display = 'block';
+  document.getElementById('card-dados-avulsos').style.display = modoAvulso ? 'block' : 'none';
+  document.getElementById('btn-salvar-arte').style.display = modoAvulso ? 'none' : 'block';
   document.getElementById('input-frase').value = clube.slogan || '';
+
+  if (modoAvulso) {
+    montarSelectAdversarioAvulso();
+    document.getElementById('avulso-adversario').addEventListener('change', desenharArte);
+    ['avulso-fase', 'avulso-data', 'avulso-local', 'avulso-placar-nosso', 'avulso-placar-adversario'].forEach(id => {
+      document.getElementById(id).addEventListener('input', desenharArte);
+    });
+  }
+
   montarGridJogadores();
   montarGridPatrocinadores();
   desenharArte();
@@ -134,9 +168,9 @@ async function tentarEntradaAutomatica() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
   const partidaId = params.get('partida_id');
-  if (token && partidaId) {
+  if (token) {
     try {
-      await entrarComTokenEPartida(token, partidaId);
+      await entrarComTokenEPartida(token, partidaId || null);
     } catch (e) {
       document.getElementById('login-erro').textContent = 'Link expirado ou inválido — entre novamente.';
       document.getElementById('login-erro').style.display = 'block';
@@ -148,28 +182,54 @@ function authHeader() {
   return { 'Authorization': `Bearer ${TOKEN}` };
 }
 
-async function carregarDados() {
-  const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
-  partida = await partidaResp.json();
+let adversariosCache = [];
 
-  const clubeResp = await fetch(`${API}/clubes/${partida.clube_id}`, { headers: authHeader() });
+async function carregarDados() {
+  let clubeId;
+
+  if (modoAvulso) {
+    const meResp = await fetch(`${API}/auth/me`, { headers: authHeader() });
+    if (!meResp.ok) throw new Error('Sessão inválida.');
+    const me = await meResp.json();
+    clubeId = me.clube_id;
+    partida = null;
+    adversario = null;
+  } else {
+    const partidaResp = await fetch(`${API}/partidas/${PARTIDA_ID}`, { headers: authHeader() });
+    if (!partidaResp.ok) throw new Error('Partida não encontrada.');
+    partida = await partidaResp.json();
+    clubeId = partida.clube_id;
+  }
+
+  const clubeResp = await fetch(`${API}/clubes/${clubeId}`, { headers: authHeader() });
   clube = await clubeResp.json();
 
   const advResp = await fetch(`${API}/adversarios`, { headers: authHeader() });
-  const adversarios = await advResp.json();
-  adversario = adversarios.find(a => a.id === partida.adversario_id);
+  adversariosCache = await advResp.json();
+  if (!modoAvulso) {
+    adversario = adversariosCache.find(a => a.id === partida.adversario_id);
+  }
 
-  const atletasResp = await fetch(`${API}/atletas?clube_id=${partida.clube_id}&ativo=true`, { headers: authHeader() });
+  const atletasResp = await fetch(`${API}/atletas?clube_id=${clubeId}&ativo=true`, { headers: authHeader() });
   atletas = await atletasResp.json();
 
-  const patResp = await fetch(`${API}/patrocinadores?clube_id=${partida.clube_id}`, { headers: authHeader() });
+  const patResp = await fetch(`${API}/patrocinadores?clube_id=${clubeId}`, { headers: authHeader() });
   patrocinadores = await patResp.json();
+}
+
+function montarSelectAdversarioAvulso() {
+  const select = document.getElementById('avulso-adversario');
+  select.innerHTML = '<option value="">Nenhum / a definir</option>' +
+    adversariosCache.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
 }
 
 function mudarTipo(tipo) {
   tipoAtual = tipo;
   document.getElementById('tab-pre').classList.toggle('tab-ativa', tipo === 'pre_jogo');
   document.getElementById('tab-pos').classList.toggle('tab-ativa', tipo === 'pos_jogo');
+  if (modoAvulso) {
+    document.getElementById('avulso-placar').style.display = tipo === 'pos_jogo' ? 'block' : 'none';
+  }
   desenharArte();
 }
 
@@ -249,11 +309,35 @@ function iniciais(nome) {
   return (nome || '').split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
 
+function obterDadosConfronto() {
+  if (!modoAvulso) {
+    return {
+      adversarioNome: adversario?.nome || 'Adversário',
+      fase: partida?.fase || '',
+      dataTexto: partida?.data_hora ? new Date(partida.data_hora).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' }) : '',
+      localTexto: partida?.local_nome || '',
+      placarNosso: partida?.placar_nosso ?? 0,
+      placarAdversario: partida?.placar_adversario ?? 0,
+    };
+  }
+  const advSelecionadoId = document.getElementById('avulso-adversario')?.value;
+  const advSelecionado = adversariosCache.find(a => String(a.id) === advSelecionadoId);
+  return {
+    adversarioNome: advSelecionado?.nome || 'Adversário',
+    fase: document.getElementById('avulso-fase')?.value || '',
+    dataTexto: document.getElementById('avulso-data')?.value || '',
+    localTexto: document.getElementById('avulso-local')?.value || '',
+    placarNosso: document.getElementById('avulso-placar-nosso')?.value || 0,
+    placarAdversario: document.getElementById('avulso-placar-adversario')?.value || 0,
+  };
+}
+
 function desenharArte() {
   const canvas = document.getElementById('canvas-arte');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const corPrimaria = clube?.cor_primaria || '#1D9E75';
+  const dados = obterDadosConfronto();
 
   ctx.fillStyle = corPrimaria;
   ctx.fillRect(0, 0, W, H);
@@ -261,31 +345,29 @@ function desenharArte() {
   ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.font = '600 22px sans-serif';
   ctx.textAlign = 'center';
-  const nomeCampeonatoTexto = partida?.fase ? partida.fase : '';
-  ctx.fillText(nomeCampeonatoTexto, W / 2, 70);
+  ctx.fillText(dados.fase, W / 2, 70);
 
   // Escudos
   desenharCirculo(ctx, 220, 200, 90, '#ffffff', corPrimaria, iniciais(clube?.nome || 'SC'), 32);
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.font = '20px sans-serif';
   ctx.fillText('x', W / 2, 210);
-  desenharCirculo(ctx, W - 220, 200, 55, 'rgba(255,255,255,0.2)', '#ffffff', iniciais(adversario?.nome || 'AD'), 20);
+  desenharCirculo(ctx, W - 220, 200, 55, 'rgba(255,255,255,0.2)', '#ffffff', iniciais(dados.adversarioNome), 20);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = '600 34px sans-serif';
   if (tipoAtual === 'pre_jogo') {
-    ctx.fillText(`${clube?.nome || 'Save FC'} x ${adversario?.nome || 'Adversário'}`, W / 2, 360);
+    ctx.fillText(`${clube?.nome || 'Save FC'} x ${dados.adversarioNome}`, W / 2, 360);
     ctx.font = '20px sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    const dataTexto = partida?.data_hora ? new Date(partida.data_hora).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' }) : '';
-    ctx.fillText(dataTexto, W / 2, 400);
-    ctx.fillText(partida?.local_nome || '', W / 2, 430);
+    ctx.fillText(dados.dataTexto, W / 2, 400);
+    ctx.fillText(dados.localTexto, W / 2, 430);
   } else {
-    const placar = `${partida?.placar_nosso ?? 0} x ${partida?.placar_adversario ?? 0}`;
+    const placar = `${dados.placarNosso} x ${dados.placarAdversario}`;
     ctx.fillText(`Resultado: ${placar}`, W / 2, 360);
     ctx.font = '20px sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText(`${clube?.nome || 'Save FC'} x ${adversario?.nome || 'Adversário'}`, W / 2, 400);
+    ctx.fillText(`${clube?.nome || 'Save FC'} x ${dados.adversarioNome}`, W / 2, 400);
   }
 
   // Frase
@@ -354,7 +436,8 @@ document.getElementById('input-frase')?.addEventListener('input', desenharArte);
 function baixarPng() {
   const canvas = document.getElementById('canvas-arte');
   const link = document.createElement('a');
-  link.download = `arte_${tipoAtual}_partida_${PARTIDA_ID}.png`;
+  const sufixo = modoAvulso ? 'avulsa' : `partida_${PARTIDA_ID}`;
+  link.download = `arte_${tipoAtual}_${sufixo}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
