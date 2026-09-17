@@ -4,26 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confirmação de presença</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233D3935'/%3E%3Ctext x='50' y='68' font-size='48' font-family='monospace' font-weight='bold' fill='%2352FF2B' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
 <style>
+  :root { --charcoal: #3D3935; --green-text: #2E7D0F; }
   * { box-sizing: border-box; }
   body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 420px; margin: 0 auto; padding: 24px 16px; background: #fafafa; color: #1a1a1a; }
   .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  .avatar { width: 48px; height: 48px; border-radius: 50%; background: #eafaf3; color: #1D9E75; display: flex; align-items: center; justify-content: center; font-weight: 600; margin: 0 auto 8px; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; background: #EAFBE3; color: var(--green-text); display: flex; align-items: center; justify-content: center; font-weight: 600; margin: 0 auto 8px; }
   .clube { text-align: center; font-size: 13px; color: #666; margin: 0 0 20px; }
   h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
   .info { font-size: 13px; color: #666; margin: 2px 0; }
   .aviso { font-size: 13px; background: #fff8e6; color: #9a6b00; border-radius: 8px; padding: 10px 12px; margin-top: 12px; }
   button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 15px; padding: 14px; }
-  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; }
+  .btn-primary { background: var(--charcoal); color: #fff; border: none; font-weight: 600; }
   .row { display: flex; gap: 10px; margin-top: 16px; }
   .row button { flex: 1; }
   .grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 8px; }
   .grid4 button { padding: 10px 4px; font-size: 13px; }
-  .selecionado { border-color: #1D9E75 !important; color: #1D9E75; font-weight: 600; }
+  .selecionado { border-color: var(--green-text) !important; color: var(--green-text); font-weight: 600; }
   textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; min-height: 60px; margin-top: 8px; }
   #carregando, #erro-geral, #ja-respondido, #conteudo, #confirmado { display: none; }
   .check { text-align: center; padding: 20px 0; }
-  .check-icone { width: 48px; height: 48px; border-radius: 50%; background: #eafaf3; color: #1D9E75; font-size: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .check-icone { width: 48px; height: 48px; border-radius: 50%; background: #EAFBE3; color: var(--green-text); font-size: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .rodape-marca { text-align: center; font-size: 11px; color: #aaa; margin-top: 24px; }
+  .rodape-marca .logo-mark { color: #52FF2B; font-family: monospace; }
 </style>
 </head>
 <body>
@@ -75,6 +79,8 @@
   <div class="check-icone">✓</div>
   <p id="mensagem-final" style="font-size:14px;margin:0;"></p>
 </div>
+
+<p class="rodape-marca"><span class="logo-mark">&gt;_</span> Prancheta_ por NDEVS</p>
 
 <script>
 const API = window.location.origin;

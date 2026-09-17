@@ -3,36 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel da Comissão — Técnico com IA</title>
+<title>Prancheta_ — Comissão</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233D3935'/%3E%3Ctext x='50' y='68' font-size='48' font-family='monospace' font-weight='bold' fill='%2352FF2B' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
 <style>
+  :root {
+    --charcoal: #3D3935;
+    --charcoal-light: #5A5650;
+    --muted: #8A8680;
+    --green: #52FF2B;
+    --green-text: #2E7D0F;
+    --bg: #FAFAFA;
+    --card-bg: #FFFFFF;
+    --border: #E8E6E1;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
-  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
-  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
-  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
-  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  html, body { margin: 0; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 560px; margin: 0 auto; background: var(--bg); color: var(--charcoal); }
+  .app-header { background: var(--charcoal); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  .app-header .logo-mark { color: var(--green); font-size: 20px; font-weight: 500; font-family: monospace; }
+  .app-header .app-name { font-size: 13px; font-weight: 500; color: #fff; margin: 0; }
+  .app-header .app-by { color: var(--muted); font-weight: 400; }
+  .app-header .app-context { font-size: 11px; color: var(--muted); margin: 0; }
+  .container { padding: 16px; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--charcoal); }
+  label { display: block; font-size: 13px; color: var(--charcoal-light); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--charcoal); }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: #fff; font-size: 14px; padding: 10px 14px; color: var(--charcoal); }
+  .btn-primary { background: var(--charcoal); color: #fff; border: none; font-weight: 600; width: 100%; }
   .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
-  .linha { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .linha { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
   .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
-  .badge-confirmado { background: #eafaf3; color: #1D9E75; }
+  .badge-confirmado { background: #EAFBE3; color: var(--green-text); }
   .badge-pendente { background: #fdf3e0; color: #b5750a; }
   .badge-recusado { background: #fdecea; color: #c0392b; }
-  .pergunta-card { background: #f7f7f7; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .pergunta-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
   .pergunta-card .opcoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .pergunta-card .opcoes button { padding: 6px 10px; font-size: 12px; }
-  .respondida { font-size: 12px; color: #1D9E75; margin-top: 4px; }
-  .linha-partida { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-  .linha-partida .info { font-size: 13px; color: #666; }
+  .respondida { font-size: 12px; color: var(--green-text); margin-top: 4px; }
+  .linha-partida { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .linha-partida .info { font-size: 13px; color: var(--muted); }
   #tela-login { }
   #tela-partidas { display: none; }
   #tela-painel { display: none; }
-  #form-nova-partida { display: none; border-top: 1px solid #eee; margin-top: 12px; padding-top: 12px; }
+  #form-nova-partida { display: none; border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
 </style>
 </head>
 <body>
 
+<header class="app-header">
+  <span class="logo-mark">&gt;_</span>
+  <div>
+    <p class="app-name">Prancheta_ <span class="app-by">por NDEVS</span></p>
+    <p class="app-context">Comissão</p>
+  </div>
+</header>
+
+<div class="container">
 <div id="tela-login" class="card">
   <h2>Entrar</h2>
   <label>E-mail</label>
@@ -118,6 +145,7 @@
     <button style="width:100%;" onclick="gerarRetrospecto()">Gerar retrospecto</button>
     <div id="area-retrospecto" style="margin-top:12px;"></div>
   </div>
+</div>
 </div>
 
 <script>
@@ -444,7 +472,7 @@ async function aprovarRetrospecto() {
   });
   if (resp.ok) {
     document.getElementById('area-retrospecto').insertAdjacentHTML('afterbegin',
-      '<p style="color:#1D9E75;font-size:13px;">Retrospecto aprovado.</p>');
+      '<p style="color:#2E7D0F;font-size:13px;">Retrospecto aprovado.</p>');
   }
 }
 

@@ -3,27 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tempo Real — Técnico com IA</title>
+<title>Prancheta_ — Tempo Real</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233D3935'/%3E%3Ctext x='50' y='68' font-size='48' font-family='monospace' font-weight='bold' fill='%2352FF2B' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
 <style>
+  :root {
+    --charcoal: #3D3935;
+    --charcoal-light: #5A5650;
+    --muted: #8A8680;
+    --green: #52FF2B;
+    --green-text: #2E7D0F;
+    --bg: #FAFAFA;
+    --card-bg: #FFFFFF;
+    --border: #E8E6E1;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
-  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
-  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
-  input, select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
+  html, body { margin: 0; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; background: var(--bg); color: var(--charcoal); }
+  .app-header { background: var(--charcoal); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  .app-header .logo-mark { color: var(--green); font-size: 20px; font-weight: 500; font-family: monospace; }
+  .app-header .app-name { font-size: 13px; font-weight: 500; color: #fff; margin: 0; }
+  .app-header .app-by { color: var(--muted); font-weight: 400; }
+  .app-header .app-context { font-size: 11px; color: var(--muted); margin: 0; }
+  .container { padding: 16px; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--charcoal); }
+  label { display: block; font-size: 13px; color: var(--charcoal-light); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--charcoal); }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: #fff; font-size: 14px; padding: 10px 14px; color: var(--charcoal); }
   button:active { transform: scale(0.98); }
-  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  .btn-primary { background: var(--charcoal); color: #fff; border: none; font-weight: 600; width: 100%; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .placar { display: flex; align-items: center; justify-content: space-between; }
   .placar .numero { font-size: 26px; font-weight: 700; }
   .cronometro { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .status { font-size: 12px; color: #888; }
+  .status { font-size: 12px; color: var(--muted); }
   #overlay { display: none; min-height: 300px; background: rgba(0,0,0,0.5); border-radius: 12px; align-items: center; justify-content: center; padding: 1rem; }
   #overlay .modal { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 340px; }
   .opcao-btn { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
-  .tag { font-size: 11px; font-weight: 600; color: #1D9E75; margin-bottom: 6px; }
-  .sugestao { background: #eafaf3; border-radius: 8px; padding: 10px; margin-top: 12px; font-size: 13px; display: none; }
+  .tag { font-size: 11px; font-weight: 600; color: var(--green-text); margin-bottom: 6px; }
+  .sugestao { background: #EAFBE3; border-radius: 8px; padding: 10px; margin-top: 12px; font-size: 13px; display: none; }
   .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
   #tela-login { }
   #tela-jogo { display: none; }
@@ -31,6 +49,15 @@
 </head>
 <body>
 
+<header class="app-header">
+  <span class="logo-mark">&gt;_</span>
+  <div>
+    <p class="app-name">Prancheta_ <span class="app-by">por NDEVS</span></p>
+    <p class="app-context">Tempo Real</p>
+  </div>
+</header>
+
+<div class="container">
 <div id="tela-login" class="card">
   <h2>Entrar</h2>
   <label>E-mail</label>
@@ -178,6 +205,7 @@
     </div>
     <div id="lista-cobrancas-penalti" style="margin-top:12px;"></div>
   </div>
+</div>
 </div>
 
 <div id="overlay">
@@ -368,8 +396,8 @@ function montarSelectAtletas(label) {
 
 function escolherTime(time) {
   timeEscolhido = time;
-  document.getElementById('btn-time-nosso').style.borderColor = time === 'nosso' ? '#1D9E75' : '#ccc';
-  document.getElementById('btn-time-adversario').style.borderColor = time === 'adversario' ? '#1D9E75' : '#ccc';
+  document.getElementById('btn-time-nosso').style.borderColor = time === 'nosso' ? '#3D3935' : '#ccc';
+  document.getElementById('btn-time-adversario').style.borderColor = time === 'adversario' ? '#3D3935' : '#ccc';
   if (time === 'nosso' && eventoAtual !== 'escanteio') {
     montarSelectAtletas('Qual atleta?');
   } else {

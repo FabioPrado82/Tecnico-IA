@@ -3,44 +3,74 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Técnico com IA — Save FC</title>
+<title>Prancheta_ — Save FC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233D3935'/%3E%3Ctext x='50' y='68' font-size='48' font-family='monospace' font-weight='bold' fill='%2352FF2B' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
 <style>
+  :root {
+    --charcoal: #3D3935;
+    --charcoal-light: #5A5650;
+    --muted: #8A8680;
+    --green: #52FF2B;
+    --green-text: #2E7D0F;
+    --bg: #FAFAFA;
+    --card-bg: #FFFFFF;
+    --border: #E8E6E1;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; background: #fafafa; color: #1a1a1a; }
-  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; text-align: center; }
-  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
-  label { display: block; font-size: 13px; color: #555; margin: 10px 0 4px; }
-  input, select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-  button { cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 14px; padding: 10px 14px; }
-  .btn-primary { background: #1D9E75; color: #fff; border: none; font-weight: 600; width: 100%; }
+  html, body { margin: 0; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; background: var(--bg); color: var(--charcoal); padding-bottom: 88px; }
+  .app-header { background: var(--charcoal); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  .app-header .logo-mark { color: var(--green); font-size: 20px; font-weight: 500; font-family: monospace; }
+  .app-header .app-name { font-size: 13px; font-weight: 500; color: #fff; margin: 0; }
+  .app-header .app-by { color: var(--muted); font-weight: 400; }
+  .app-header .app-context { font-size: 11px; color: var(--muted); margin: 0; }
+  .container { padding: 16px; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--charcoal); }
+  label { display: block; font-size: 13px; color: var(--charcoal-light); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--charcoal); }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: #fff; font-size: 14px; padding: 10px 14px; color: var(--charcoal); }
+  .btn-primary { background: var(--charcoal); color: #fff; border: none; font-weight: 600; width: 100%; }
   .erro { color: #c0392b; font-size: 13px; margin-top: 8px; }
-  .linha-partida { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-  .linha-partida .info { font-size: 13px; color: #666; }
+  .linha-partida { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .linha-partida .info { font-size: 13px; color: var(--muted); }
+  .badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 6px; background: #EAFBE3; color: var(--green-text); }
   .menu-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
-  .menu-grid a { display: block; text-align: center; text-decoration: none; color: #1a1a1a; background: #f7f7f7; border-radius: 8px; padding: 14px 6px; font-size: 13px; font-weight: 500; }
-  .menu-grid a:hover { background: #eafaf3; }
-  #form-nova-partida { display: none; border-top: 1px solid #eee; margin-top: 12px; padding-top: 12px; }
+  .menu-grid a { display: block; text-align: center; text-decoration: none; color: var(--charcoal); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 6px; font-size: 13px; font-weight: 500; }
+  .menu-grid a:hover { border-color: var(--green); }
+  #form-nova-partida { display: none; border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
   #tela-login { }
   #tela-partidas { display: none; }
   .sair { text-align: center; margin-top: 8px; }
-  .sair button { background: none; border: none; color: #999; font-size: 12px; text-decoration: underline; }
-  .abas { display: flex; gap: 8px; margin-bottom: 16px; }
-  .abas button { flex: 1; padding: 10px; }
-  .aba-ativa { font-weight: 700; border-color: #1D9E75 !important; color: #1D9E75; }
+  .sair button { background: none; border: none; color: var(--muted); font-size: 12px; text-decoration: underline; }
   #secao-atletas { display: none; }
-  .linha-atleta { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .linha-atleta { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
   .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-top: 6px; }
-  .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #333; margin: 0; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--charcoal); margin: 0; }
   .chk input { width: auto; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .bottom-nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: none; padding: 8px 0; z-index: 10; }
+  .bottom-nav button { flex: 1; border: none; background: none; padding: 4px 0; font-size: 11px; color: var(--muted); border-radius: 0; }
+  .bottom-nav-itens { display: flex; }
+  .bottom-nav-itens > div { flex: 1; text-align: center; cursor: pointer; }
+  .bottom-nav-icone { width: 22px; height: 22px; margin: 0 auto 2px; border-radius: 5px; background: #D8D6D1; }
+  .bottom-nav-ativo .bottom-nav-icone { background: var(--green); }
+  .bottom-nav-ativo .bottom-nav-label { color: var(--charcoal); font-weight: 500; }
+  .bottom-nav-label { font-size: 11px; color: var(--muted); }
 </style>
 </head>
 <body>
 
-<h1>Técnico com IA — Save FC</h1>
+<header class="app-header">
+  <span class="logo-mark">&gt;_</span>
+  <div>
+    <p class="app-name">Prancheta_ <span class="app-by">por NDEVS</span></p>
+    <p class="app-context" id="header-contexto"></p>
+  </div>
+</header>
 
+<div class="container">
 <div id="tela-login" class="card">
   <h2>Entrar</h2>
   <label>E-mail</label>
@@ -52,12 +82,6 @@
 </div>
 
 <div id="tela-partidas">
-  <div class="abas">
-    <button id="aba-partidas" class="aba-ativa" onclick="mudarAba('partidas')">Partidas</button>
-    <button id="aba-atletas" onclick="mudarAba('atletas')">Atletas</button>
-    <button id="aba-adversarios" onclick="mudarAba('adversarios')">Adversários</button>
-  </div>
-
   <div id="secao-partidas">
   <div class="card">
     <h2>Partidas</h2>
@@ -206,6 +230,24 @@
     <button onclick="sair()">Sair</button>
   </div>
 </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bottom-nav-itens">
+    <div id="nav-partidas" class="bottom-nav-ativo" onclick="mudarAba('partidas')">
+      <div class="bottom-nav-icone"></div>
+      <p class="bottom-nav-label">Partidas</p>
+    </div>
+    <div id="nav-atletas" onclick="mudarAba('atletas')">
+      <div class="bottom-nav-icone"></div>
+      <p class="bottom-nav-label">Atletas</p>
+    </div>
+    <div id="nav-adversarios" onclick="mudarAba('adversarios')">
+      <div class="bottom-nav-icone"></div>
+      <p class="bottom-nav-label">Advers.</p>
+    </div>
+  </div>
+</nav>
 
 <script>
 const API = window.location.origin;
@@ -240,9 +282,15 @@ async function entrar() {
 
     document.getElementById('tela-login').style.display = 'none';
     document.getElementById('tela-partidas').style.display = 'block';
+    document.getElementById('bottom-nav').style.display = 'block';
     document.getElementById('link-arte-avulsa').href = `arte.html?token=${TOKEN}`;
     await carregarListasBase();
     await carregarPartidas();
+    const clubeResp = await fetch(`${API}/clubes/${CLUBE_ID}`, { headers: authHeader() });
+    if (clubeResp.ok) {
+      const clube = await clubeResp.json();
+      document.getElementById('header-contexto').textContent = clube.nome;
+    }
   } catch (e) {
     erro.textContent = e.message;
     erro.style.display = 'block';
@@ -253,6 +301,8 @@ function sair() {
   TOKEN = null;
   CLUBE_ID = null;
   document.getElementById('tela-partidas').style.display = 'none';
+  document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('header-contexto').textContent = '';
   document.getElementById('tela-login').style.display = 'block';
   document.getElementById('login-senha').value = '';
 }
@@ -380,9 +430,9 @@ async function criarPartida() {
   await carregarPartidas();
 }
 function mudarAba(aba) {
-  document.getElementById('aba-partidas').classList.toggle('aba-ativa', aba === 'partidas');
-  document.getElementById('aba-atletas').classList.toggle('aba-ativa', aba === 'atletas');
-  document.getElementById('aba-adversarios').classList.toggle('aba-ativa', aba === 'adversarios');
+  document.getElementById('nav-partidas').classList.toggle('bottom-nav-ativo', aba === 'partidas');
+  document.getElementById('nav-atletas').classList.toggle('bottom-nav-ativo', aba === 'atletas');
+  document.getElementById('nav-adversarios').classList.toggle('bottom-nav-ativo', aba === 'adversarios');
   document.getElementById('secao-partidas').style.display = aba === 'partidas' ? 'block' : 'none';
   document.getElementById('secao-atletas').style.display = aba === 'atletas' ? 'block' : 'none';
   document.getElementById('secao-adversarios').style.display = aba === 'adversarios' ? 'block' : 'none';
