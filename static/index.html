@@ -158,7 +158,7 @@
       <h2>Elenco</h2>
       <div id="lista-atletas"></div>
       <button class="btn-secundario" style="margin-top:12px;" onclick="alternarFormNovoAtleta()"><i class="ti ti-plus"></i> Novo atleta</button>
-      <button class="btn-secundario" style="margin-top:8px;" onclick="importarListaSaveFC()"><i class="ti ti-upload"></i> Importar lista Save FC</button>
+      <button id="btn-importar-lista" class="btn-secundario" style="margin-top:8px;" onclick="importarListaSaveFC()"><i class="ti ti-upload"></i> Importar lista Save FC</button>
       <p class="erro" id="erro-importar" style="display:none;"></p>
 
       <div id="form-novo-atleta" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
@@ -666,40 +666,51 @@ function dataNascimentoAproximada(idade) {
 }
 
 async function importarListaSaveFC() {
+  const btn = document.getElementById('btn-importar-lista');
+  if (btn.disabled) return;  // já está processando, ignora clique repetido
+  btn.disabled = true;  // trava JÁ, de forma síncrona, antes de qualquer await
+  const textoOriginal = btn.innerHTML;
   const erro = document.getElementById('erro-importar');
   erro.style.display = 'none';
 
-  const resp = await fetch(`${API}/atletas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
-  const jaExistentes = new Set((await resp.json()).map(a => a.nome));
-  const faltando = LISTA_SAVE_FC.filter(a => !jaExistentes.has(a.nome));
+  try {
+    const resp = await fetch(`${API}/atletas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+    const jaExistentes = new Set((await resp.json()).map(a => a.nome));
+    const faltando = LISTA_SAVE_FC.filter(a => !jaExistentes.has(a.nome));
 
-  if (faltando.length === 0) {
+    if (faltando.length === 0) {
+      erro.style.color = '#2E7D0F';
+      erro.textContent = 'Todos os 29 atletas já estão cadastrados.';
+      erro.style.display = 'block';
+      return;
+    }
+
+    if (!confirm(`Isso vai cadastrar ${faltando.length} atleta(s) que ainda não existem. Continuar?`)) return;
+
+    btn.innerHTML = '<i class="ti ti-loader-2"></i> Importando...';
+
+    let sucesso = 0;
+    for (const atleta of faltando) {
+      const r = await fetch(`${API}/atletas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({
+          clube_id: CLUBE_ID,
+          nome: atleta.nome,
+          data_nascimento: dataNascimentoAproximada(atleta.idade),
+        }),
+      });
+      if (r.ok) sucesso++;
+    }
+
     erro.style.color = '#2E7D0F';
-    erro.textContent = 'Todos os 29 atletas já estão cadastrados.';
+    erro.textContent = `${sucesso} de ${faltando.length} atleta(s) importado(s) com sucesso.`;
     erro.style.display = 'block';
-    return;
+    await carregarAtletas();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
   }
-
-  if (!confirm(`Isso vai cadastrar ${faltando.length} atleta(s) que ainda não existem. Continuar?`)) return;
-
-  let sucesso = 0;
-  for (const atleta of faltando) {
-    const r = await fetch(`${API}/atletas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({
-        clube_id: CLUBE_ID,
-        nome: atleta.nome,
-        data_nascimento: dataNascimentoAproximada(atleta.idade),
-      }),
-    });
-    if (r.ok) sucesso++;
-  }
-
-  erro.style.color = '#2E7D0F';
-  erro.textContent = `${sucesso} de ${faltando.length} atleta(s) importado(s) com sucesso.`;
-  erro.style.display = 'block';
-  await carregarAtletas();
 }
 
 let atletaEditandoId = null;
