@@ -129,6 +129,7 @@
           <select id="nova-local">
             <option value="casa">Casa</option>
             <option value="fora">Fora</option>
+            <option value="neutro">Neutro</option>
           </select>
         </div>
         <div>
@@ -157,8 +158,20 @@
       <h2>Elenco</h2>
       <div id="lista-atletas"></div>
       <button class="btn-secundario" style="margin-top:12px;" onclick="alternarFormNovoAtleta()"><i class="ti ti-plus"></i> Novo atleta</button>
+      <button class="btn-secundario" style="margin-top:8px;" onclick="importarListaSaveFC()"><i class="ti ti-upload"></i> Importar lista Save FC</button>
+      <p class="erro" id="erro-importar" style="display:none;"></p>
 
       <div id="form-novo-atleta" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
+        <label>Foto</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img id="atleta-foto-preview" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:#F1F0EE;display:none;">
+          <div id="atleta-foto-vazia" style="width:56px;height:56px;border-radius:50%;background:#F1F0EE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="ti ti-shirt-sport" style="color:#B8B6AF;font-size:22px;"></i>
+          </div>
+          <input type="file" id="atleta-foto-input" accept="image/*" style="font-size:12px;">
+        </div>
+        <input type="hidden" id="atleta-foto-url">
+
         <label>Nome completo *</label>
         <input type="text" id="atleta-nome" placeholder="Nome completo">
 
@@ -214,7 +227,7 @@
           <label class="chk"><input type="checkbox" value="Atacante"> Atacante</label>
         </div>
 
-        <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarAtleta()">Cadastrar atleta</button>
+        <button id="btn-salvar-atleta" class="btn-primary" style="width:100%;margin-top:14px;" onclick="criarAtleta()"><i class="ti ti-check"></i> Cadastrar atleta</button>
         <p class="erro" id="erro-novo-atleta" style="display:none;"></p>
       </div>
     </div>
@@ -509,7 +522,12 @@ async function criarAdversarioTab() {
 
 function alternarFormNovoAtleta() {
   const form = document.getElementById('form-novo-atleta');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  const abrindo = form.style.display === 'none';
+  form.style.display = abrindo ? 'block' : 'none';
+  if (abrindo) {
+    atletaEditandoId = null;
+    document.getElementById('btn-salvar-atleta').innerHTML = '<i class="ti ti-check"></i> Cadastrar atleta';
+  }
 }
 
 function mascararCpf(valor) {
@@ -519,6 +537,60 @@ function mascararCpf(valor) {
     .replace(/(\d{3})(\d)/, '$1.$2')
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
+
+function redimensionarFoto(arquivo) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const TAMANHO_MAX = 240;
+        let largura = img.width, altura = img.height;
+        if (largura > altura) {
+          if (largura > TAMANHO_MAX) { altura *= TAMANHO_MAX / largura; largura = TAMANHO_MAX; }
+        } else {
+          if (altura > TAMANHO_MAX) { largura *= TAMANHO_MAX / altura; altura = TAMANHO_MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = largura;
+        canvas.height = altura;
+        canvas.getContext('2d').drawImage(img, 0, 0, largura, altura);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    leitor.onerror = reject;
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+function mostrarPreviewFoto(dataUrl) {
+  document.getElementById('atleta-foto-url').value = dataUrl;
+  document.getElementById('atleta-foto-preview').src = dataUrl;
+  document.getElementById('atleta-foto-preview').style.display = 'block';
+  document.getElementById('atleta-foto-vazia').style.display = 'none';
+}
+
+function limparPreviewFoto() {
+  document.getElementById('atleta-foto-url').value = '';
+  document.getElementById('atleta-foto-preview').src = '';
+  document.getElementById('atleta-foto-preview').style.display = 'none';
+  document.getElementById('atleta-foto-vazia').style.display = 'flex';
+  document.getElementById('atleta-foto-input').value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const inputFoto = document.getElementById('atleta-foto-input');
+  if (inputFoto) {
+    inputFoto.addEventListener('change', async (e) => {
+      const arquivo = e.target.files[0];
+      if (!arquivo) return;
+      const dataUrl = await redimensionarFoto(arquivo);
+      mostrarPreviewFoto(dataUrl);
+    });
+  }
+});
 
 function calcularIdade(dataNascimento) {
   const nascimento = new Date(dataNascimento);
@@ -532,14 +604,21 @@ function calcularIdade(dataNascimento) {
   return idade;
 }
 
+let atletasCache = [];
+
 async function carregarAtletas() {
   const resp = await fetch(`${API}/atletas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
-  const atletas = await resp.json();
+  atletasCache = await resp.json();
   const div = document.getElementById('lista-atletas');
-  div.innerHTML = atletas.map(a => `
-    <div class="linha-atleta">
-      <span>${a.nome}${a.apelido ? ' ("' + a.apelido + '")' : ''}</span>
-      <span style="color:#888;font-size:12px;">${a.posicao_principal || 'sem posição'}</span>
+  div.innerHTML = atletasCache.map(a => `
+    <div class="linha-atleta" style="cursor:pointer;" onclick="editarAtleta(${a.id})">
+      <span style="display:flex;align-items:center;gap:8px;">
+        ${a.foto_url
+          ? `<img src="${a.foto_url}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`
+          : `<span style="width:28px;height:28px;border-radius:50%;background:#F1F0EE;display:inline-flex;align-items:center;justify-content:center;"><i class="ti ti-shirt-sport" style="font-size:14px;color:#B8B6AF;"></i></span>`}
+        ${a.nome}${a.apelido ? ' ("' + a.apelido + '")' : ''}
+      </span>
+      <span style="color:#888;font-size:12px;">${a.posicao_principal || 'sem posição'} <i class="ti ti-pencil" style="margin-left:4px;"></i></span>
     </div>
   `).join('') || '<div class="vazio"><i class="ti ti-shirt-sport"></i><p>Nenhum atleta cadastrado ainda.</p></div>';
 }
@@ -547,6 +626,111 @@ async function carregarAtletas() {
 function pegarPosicoesSecundariasAtleta() {
   const marcadas = document.querySelectorAll('#atleta-posicoes-secundarias input:checked');
   return Array.from(marcadas).map(c => c.value);
+}
+
+const LISTA_SAVE_FC = [
+  { nome: "Wesley Soares Santana", idade: 32 },
+  { nome: "Joao Luz da Silva Neto", idade: 31 },
+  { nome: "Rodolfo de Oliveira Barbosa", idade: 33 },
+  { nome: "Breno Fernandez do Santos Cardoso", idade: 25 },
+  { nome: "Jonatan Santana de Assis", idade: 29 },
+  { nome: "Gabriel de Sousa Leite", idade: 25 },
+  { nome: "Felipe Pereira da Silva", idade: 29 },
+  { nome: "Bruno Barbosa Carvalho", idade: 32 },
+  { nome: "Luis Henrique Soares de Souza", idade: 26 },
+  { nome: "Emerson Martins de Nazare", idade: 40 },
+  { nome: "Henrique da Silva Sousa", idade: 32 },
+  { nome: "Gabriel Santos Valera", idade: 27 },
+  { nome: "Thiago Alves da Cruz", idade: 35 },
+  { nome: "Rafael Gustavo Gomes de Lima", idade: 25 },
+  { nome: "Rerrison Soares de Sousa", idade: 27 },
+  { nome: "Fernando de Andrade Spadoni", idade: 36 },
+  { nome: "Lucas Lorenzi dos Santos", idade: 32 },
+  { nome: "Diego Lorenzi Pereira da Silva", idade: 33 },
+  { nome: "Thiago Silva Carrilho", idade: 27 },
+  { nome: "Sergio Daniel Vivas Sobrinho", idade: 25 },
+  { nome: "Daniel Mariano Aquino", idade: 27 },
+  { nome: "Luciano Patrik Virgulino de Araujo", idade: 30 },
+  { nome: "Maycon Silva Paz", idade: 31 },
+  { nome: "Gabriel Silva Paz", idade: 25 },
+  { nome: "Eduardo Macedo Rodrigues", idade: 27 },
+  { nome: "Rayan Barradas Nunes", idade: 29 },
+  { nome: "Higor Batista da Silva", idade: 26 },
+  { nome: "Alex Silva Santos", idade: 32 },
+  { nome: "Valber dos Santos Alves", idade: 39 },
+];
+
+function dataNascimentoAproximada(idade) {
+  const ano = new Date().getFullYear() - idade;
+  return `${ano}-01-01`;
+}
+
+async function importarListaSaveFC() {
+  const erro = document.getElementById('erro-importar');
+  erro.style.display = 'none';
+
+  const resp = await fetch(`${API}/atletas?clube_id=${CLUBE_ID}`, { headers: authHeader() });
+  const jaExistentes = new Set((await resp.json()).map(a => a.nome));
+  const faltando = LISTA_SAVE_FC.filter(a => !jaExistentes.has(a.nome));
+
+  if (faltando.length === 0) {
+    erro.style.color = '#2E7D0F';
+    erro.textContent = 'Todos os 29 atletas já estão cadastrados.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  if (!confirm(`Isso vai cadastrar ${faltando.length} atleta(s) que ainda não existem. Continuar?`)) return;
+
+  let sucesso = 0;
+  for (const atleta of faltando) {
+    const r = await fetch(`${API}/atletas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify({
+        clube_id: CLUBE_ID,
+        nome: atleta.nome,
+        data_nascimento: dataNascimentoAproximada(atleta.idade),
+      }),
+    });
+    if (r.ok) sucesso++;
+  }
+
+  erro.style.color = '#2E7D0F';
+  erro.textContent = `${sucesso} de ${faltando.length} atleta(s) importado(s) com sucesso.`;
+  erro.style.display = 'block';
+  await carregarAtletas();
+}
+
+let atletaEditandoId = null;
+
+function editarAtleta(id) {
+  const a = atletasCache.find(x => x.id === id);
+  if (!a) return;
+  atletaEditandoId = id;
+  document.getElementById('atleta-nome').value = a.nome || '';
+  document.getElementById('atleta-apelido').value = a.apelido || '';
+  document.getElementById('atleta-cpf').value = a.cpf || '';
+  document.getElementById('atleta-data-nascimento').value = a.data_nascimento || '';
+  document.getElementById('atleta-posicao').value = a.posicao_principal || '';
+  document.getElementById('atleta-pe').value = a.pe_dominante || '';
+  document.getElementById('atleta-altura').value = a.altura_cm || '';
+  document.getElementById('atleta-peso').value = a.peso_kg || '';
+  document.querySelectorAll('#atleta-posicoes-secundarias input').forEach(c => {
+    c.checked = (a.posicoes_secundarias || []).includes(c.value);
+  });
+  if (a.data_nascimento) {
+    const idade = calcularIdade(a.data_nascimento);
+    if (idade !== null) document.getElementById('atleta-idade').value = idade;
+  }
+  if (a.foto_url) {
+    mostrarPreviewFoto(a.foto_url);
+  } else {
+    limparPreviewFoto();
+  }
+  document.getElementById('form-novo-atleta').style.display = 'block';
+  document.getElementById('btn-salvar-atleta').innerHTML = '<i class="ti ti-check"></i> Salvar alterações';
+  document.getElementById('form-novo-atleta').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function criarAtleta() {
@@ -559,31 +743,59 @@ async function criarAtleta() {
     return;
   }
 
-  const corpo = {
-    clube_id: CLUBE_ID,
-    nome,
-    apelido: document.getElementById('atleta-apelido').value || null,
-    cpf: document.getElementById('atleta-cpf').value || null,
-    data_nascimento: document.getElementById('atleta-data-nascimento').value || null,
-    posicao_principal: document.getElementById('atleta-posicao').value || null,
-    pe_dominante: document.getElementById('atleta-pe').value || null,
-    altura_cm: document.getElementById('atleta-altura').value ? Number(document.getElementById('atleta-altura').value) : null,
-    peso_kg: document.getElementById('atleta-peso').value ? Number(document.getElementById('atleta-peso').value) : null,
-    posicoes_secundarias: pegarPosicoesSecundariasAtleta(),
-  };
+  const editando = !!atletaEditandoId;
+  let corpo;
+  if (editando) {
+    // Edição: só envia campos preenchidos, pra não apagar dado existente sem querer.
+    corpo = { nome };
+    const apelido = document.getElementById('atleta-apelido').value;
+    const cpf = document.getElementById('atleta-cpf').value;
+    const dataNasc = document.getElementById('atleta-data-nascimento').value;
+    const posicao = document.getElementById('atleta-posicao').value;
+    const pe = document.getElementById('atleta-pe').value;
+    const altura = document.getElementById('atleta-altura').value;
+    const peso = document.getElementById('atleta-peso').value;
+    const secundarias = pegarPosicoesSecundariasAtleta();
+    if (apelido) corpo.apelido = apelido;
+    if (cpf) corpo.cpf = cpf;
+    if (dataNasc) corpo.data_nascimento = dataNasc;
+    if (posicao) corpo.posicao_principal = posicao;
+    if (pe) corpo.pe_dominante = pe;
+    if (altura) corpo.altura_cm = Number(altura);
+    if (peso) corpo.peso_kg = Number(peso);
+    if (secundarias.length > 0) corpo.posicoes_secundarias = secundarias;
+    const fotoUrl = document.getElementById('atleta-foto-url').value;
+    if (fotoUrl) corpo.foto_url = fotoUrl;
+  } else {
+    corpo = {
+      clube_id: CLUBE_ID,
+      nome,
+      apelido: document.getElementById('atleta-apelido').value || null,
+      cpf: document.getElementById('atleta-cpf').value || null,
+      data_nascimento: document.getElementById('atleta-data-nascimento').value || null,
+      posicao_principal: document.getElementById('atleta-posicao').value || null,
+      pe_dominante: document.getElementById('atleta-pe').value || null,
+      altura_cm: document.getElementById('atleta-altura').value ? Number(document.getElementById('atleta-altura').value) : null,
+      peso_kg: document.getElementById('atleta-peso').value ? Number(document.getElementById('atleta-peso').value) : null,
+      posicoes_secundarias: pegarPosicoesSecundariasAtleta(),
+      foto_url: document.getElementById('atleta-foto-url').value || null,
+    };
+  }
 
-  const resp = await fetch(`${API}/atletas`, {
-    method: 'POST',
+  const resp = await fetch(editando ? `${API}/atletas/${atletaEditandoId}` : `${API}/atletas`, {
+    method: editando ? 'PATCH' : 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify(corpo),
   });
   const data = await resp.json();
   if (!resp.ok) {
-    erro.textContent = data.detail || 'Erro ao cadastrar atleta.';
+    erro.textContent = data.detail || 'Erro ao salvar atleta.';
     erro.style.display = 'block';
     return;
   }
 
+  atletaEditandoId = null;
+  document.getElementById('btn-salvar-atleta').innerHTML = '<i class="ti ti-check"></i> Cadastrar atleta';
   document.getElementById('atleta-nome').value = '';
   document.getElementById('atleta-apelido').value = '';
   document.getElementById('atleta-cpf').value = '';
@@ -594,6 +806,7 @@ async function criarAtleta() {
   document.getElementById('atleta-altura').value = '';
   document.getElementById('atleta-peso').value = '';
   document.querySelectorAll('#atleta-posicoes-secundarias input:checked').forEach(c => c.checked = false);
+  limparPreviewFoto();
   document.getElementById('form-novo-atleta').style.display = 'none';
   await carregarAtletas();
 }
