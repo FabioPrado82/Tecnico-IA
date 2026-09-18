@@ -18,6 +18,7 @@ class AtletaBase(BaseModel):
     pe_dominante: Optional[str] = None
     altura_cm: Optional[int] = None
     peso_kg: Optional[float] = None
+    foto_url: Optional[str] = None
 
 
 class AtletaCreate(AtletaBase):

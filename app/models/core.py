@@ -1,7 +1,7 @@
 """
 Modelos das entidades centrais — mapeiam para tabelas já criadas pelo schema.sql.
 """
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, SmallInteger, ARRAY, Date, TIMESTAMP, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, SmallInteger, ARRAY, Date, TIMESTAMP, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -37,7 +37,7 @@ class Atleta(Base):
     altura_cm = Column(SmallInteger)
     peso_kg = Column(Numeric(5, 2))
     ativo = Column(Boolean, nullable=False, default=True)
-    foto_url = Column(String(255))
+    foto_url = Column(Text)  # armazena a foto como base64 (data URI), não como arquivo — Render não persiste disco
     criado_em = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     clube = relationship("Clube", back_populates="atletas")

@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
+from datetime import date
 
 from app.core.database import get_db
 from app.core.deps import usuario_atual
@@ -8,6 +11,21 @@ from app.models.usuario import Usuario
 from app.schemas.core import AtletaCreate, AtletaOut
 
 router = APIRouter(prefix="/atletas", tags=["atletas"], dependencies=[Depends(usuario_atual)])
+
+
+class AtletaUpdate(BaseModel):
+    """Todos os campos opcionais — só atualiza o que for enviado (edição parcial)."""
+    nome: Optional[str] = None
+    apelido: Optional[str] = None
+    cpf: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    posicao_principal: Optional[str] = None
+    posicoes_secundarias: Optional[list[str]] = None
+    pe_dominante: Optional[str] = None
+    altura_cm: Optional[int] = None
+    peso_kg: Optional[float] = None
+    foto_url: Optional[str] = None
+    ativo: Optional[bool] = None
 
 
 @router.post("", response_model=AtletaOut, status_code=201)
@@ -32,4 +50,16 @@ def obter_atleta(atleta_id: int, db: Session = Depends(get_db)):
     atleta = db.get(Atleta, atleta_id)
     if not atleta:
         raise HTTPException(status_code=404, detail="Atleta não encontrado")
+    return atleta
+
+
+@router.patch("/{atleta_id}", response_model=AtletaOut)
+def atualizar_atleta(atleta_id: int, dados: AtletaUpdate, db: Session = Depends(get_db)):
+    atleta = db.get(Atleta, atleta_id)
+    if not atleta:
+        raise HTTPException(status_code=404, detail="Atleta não encontrado")
+    for campo, valor in dados.model_dump(exclude_unset=True).items():
+        setattr(atleta, campo, valor)
+    db.commit()
+    db.refresh(atleta)
     return atleta
