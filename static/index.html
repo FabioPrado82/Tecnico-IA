@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prancheta_ — Save FC</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233D3935'/%3E%3Ctext x='50' y='68' font-size='48' font-family='monospace' font-weight='bold' fill='%2352FF2B' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/tabler-icons/tabler-icons.min.css">
 <style>
   :root {
     --charcoal: #3D3935;
@@ -19,13 +20,21 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; background: var(--bg); color: var(--charcoal); padding-bottom: 88px; }
-  .app-header { background: var(--charcoal); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
-  .app-header .logo-mark { color: var(--green); font-size: 20px; font-weight: 500; font-family: monospace; }
-  .app-header .app-name { font-size: 13px; font-weight: 500; color: #fff; margin: 0; }
-  .app-header .app-by { color: var(--muted); font-weight: 400; }
-  .app-header .app-context { font-size: 11px; color: var(--muted); margin: 0; }
+  .app-header-top { background: var(--charcoal); color: #fff; padding: 6px 16px; display: flex; align-items: center; gap: 6px; }
+  .app-header-top .logo-mark { color: var(--green); font-size: 13px; font-weight: 500; font-family: monospace; }
+  .app-header-top .app-name-compact { font-size: 11px; font-weight: 500; color: #fff; }
+  .app-header-top .app-by { color: var(--muted); font-weight: 400; }
+  .clube-banda { padding: 14px 16px; display: none; align-items: center; gap: 12px; background: var(--charcoal); }
+  .clube-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+  .clube-nome { font-size: 18px; font-weight: 600; color: #fff; margin: 0; }
+  .clube-subtitulo { font-size: 11px; color: rgba(255,255,255,0.75); margin: 0; }
   .container { padding: 16px; }
-  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(61,57,53,0.04); }
+  .btn-secundario { background: #fff; border: 1.5px solid var(--border); color: var(--charcoal); font-weight: 500; width: 100%; }
+  .btn-secundario:hover { border-color: var(--green); }
+  .vazio { text-align: center; padding: 32px 16px; color: var(--muted); }
+  .vazio i { font-size: 32px; color: #D8D6D1; display: block; margin-bottom: 8px; }
+  .vazio p { font-size: 13px; margin: 0; }
   h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--charcoal); }
   label { display: block; font-size: 13px; color: var(--charcoal-light); margin: 10px 0 4px; }
   input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; color: var(--charcoal); }
@@ -50,25 +59,29 @@
   .chk input { width: auto; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-  .bottom-nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: none; padding: 8px 0; z-index: 10; }
+  .bottom-nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: none; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); z-index: 10; }
   .bottom-nav button { flex: 1; border: none; background: none; padding: 4px 0; font-size: 11px; color: var(--muted); border-radius: 0; }
   .bottom-nav-itens { display: flex; }
-  .bottom-nav-itens > div { flex: 1; text-align: center; cursor: pointer; }
-  .bottom-nav-icone { width: 22px; height: 22px; margin: 0 auto 2px; border-radius: 5px; background: #D8D6D1; }
-  .bottom-nav-ativo .bottom-nav-icone { background: var(--green); }
-  .bottom-nav-ativo .bottom-nav-label { color: var(--charcoal); font-weight: 500; }
+  .bottom-nav-itens > div { flex: 1; text-align: center; cursor: pointer; padding: 4px 0; }
+  .bottom-nav-icone { display: block; font-size: 22px; color: #B8B6AF; line-height: 1; margin-bottom: 3px; transition: color 0.15s; }
+  .bottom-nav-ativo .bottom-nav-icone { color: var(--green-text); }
+  .bottom-nav-ativo .bottom-nav-label { color: var(--charcoal); font-weight: 600; }
   .bottom-nav-label { font-size: 11px; color: var(--muted); }
 </style>
 </head>
 <body>
 
-<header class="app-header">
+<header class="app-header-top">
   <span class="logo-mark">&gt;_</span>
-  <div>
-    <p class="app-name">Prancheta_ <span class="app-by">por NDEVS</span></p>
-    <p class="app-context" id="header-contexto"></p>
-  </div>
+  <span class="app-name-compact">Prancheta_ <span class="app-by">por NDEVS</span></span>
 </header>
+<div class="clube-banda" id="clube-banda">
+  <div class="clube-avatar" id="clube-avatar">SC</div>
+  <div>
+    <p class="clube-nome" id="header-contexto"></p>
+    <p class="clube-subtitulo">Gestão de futebol</p>
+  </div>
+</div>
 
 <div class="container">
 <div id="tela-login" class="card">
@@ -86,7 +99,7 @@
   <div class="card">
     <h2>Partidas</h2>
     <div id="lista-partidas"></div>
-    <button style="width:100%;margin-top:12px;" onclick="alternarFormNovaPartida()">+ Nova partida</button>
+    <button class="btn-secundario" style="margin-top:12px;" onclick="alternarFormNovaPartida()"><i class="ti ti-plus"></i> Nova partida</button>
     <div id="form-nova-partida">
       <label>Campeonato</label>
       <select id="nova-campeonato"></select>
@@ -143,7 +156,7 @@
     <div class="card">
       <h2>Elenco</h2>
       <div id="lista-atletas"></div>
-      <button style="width:100%;margin-top:12px;" onclick="alternarFormNovoAtleta()">+ Novo atleta</button>
+      <button class="btn-secundario" style="margin-top:12px;" onclick="alternarFormNovoAtleta()"><i class="ti ti-plus"></i> Novo atleta</button>
 
       <div id="form-novo-atleta" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
         <label>Nome completo *</label>
@@ -211,7 +224,7 @@
     <div class="card">
       <h2>Adversários</h2>
       <div id="lista-adversarios-tab"></div>
-      <button style="width:100%;margin-top:12px;" onclick="alternarFormNovoAdversarioTab()">+ Novo adversário</button>
+      <button class="btn-secundario" style="margin-top:12px;" onclick="alternarFormNovoAdversarioTab()"><i class="ti ti-plus"></i> Novo adversário</button>
 
       <div id="form-novo-adversario-tab" style="display:none;border-top:1px solid #eee;margin-top:12px;padding-top:12px;">
         <label>Nome do adversário *</label>
@@ -235,15 +248,15 @@
 <nav class="bottom-nav" id="bottom-nav">
   <div class="bottom-nav-itens">
     <div id="nav-partidas" class="bottom-nav-ativo" onclick="mudarAba('partidas')">
-      <div class="bottom-nav-icone"></div>
+      <i class="ti ti-calendar-event bottom-nav-icone"></i>
       <p class="bottom-nav-label">Partidas</p>
     </div>
     <div id="nav-atletas" onclick="mudarAba('atletas')">
-      <div class="bottom-nav-icone"></div>
+      <i class="ti ti-shirt-sport bottom-nav-icone"></i>
       <p class="bottom-nav-label">Atletas</p>
     </div>
     <div id="nav-adversarios" onclick="mudarAba('adversarios')">
-      <div class="bottom-nav-icone"></div>
+      <i class="ti ti-shield bottom-nav-icone"></i>
       <p class="bottom-nav-label">Advers.</p>
     </div>
   </div>
@@ -290,6 +303,10 @@ async function entrar() {
     if (clubeResp.ok) {
       const clube = await clubeResp.json();
       document.getElementById('header-contexto').textContent = clube.nome;
+      document.getElementById('clube-banda').style.display = 'flex';
+      document.getElementById('clube-banda').style.background = clube.cor_primaria || '#3D3935';
+      const iniciais = (clube.nome || '').split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
+      document.getElementById('clube-avatar').textContent = iniciais || 'SC';
     }
   } catch (e) {
     erro.textContent = e.message;
@@ -303,6 +320,7 @@ function sair() {
   document.getElementById('tela-partidas').style.display = 'none';
   document.getElementById('bottom-nav').style.display = 'none';
   document.getElementById('header-contexto').textContent = '';
+  document.getElementById('clube-banda').style.display = 'none';
   document.getElementById('tela-login').style.display = 'block';
   document.getElementById('login-senha').value = '';
 }
@@ -346,7 +364,7 @@ async function carregarPartidas() {
         </div>
       </div>
     </div>
-  `).join('') || '<p style="font-size:13px;color:#888;">Nenhuma partida criada ainda.</p>';
+  `).join('') || '<div class="vazio"><i class="ti ti-calendar-event"></i><p>Nenhuma partida criada ainda.</p></div>';
 }
 
 function alternarFormNovaPartida() {
@@ -454,7 +472,7 @@ async function carregarAdversariosTab() {
       <span>${a.nome}</span>
       <span style="color:#888;font-size:12px;">${a.logo_url ? 'com escudo' : 'sem escudo'}</span>
     </div>
-  `).join('') || '<p style="font-size:13px;color:#888;">Nenhum adversário cadastrado ainda.</p>';
+  `).join('') || '<div class="vazio"><i class="ti ti-shield"></i><p>Nenhum adversário cadastrado ainda.</p></div>';
 }
 
 async function criarAdversarioTab() {
@@ -523,7 +541,7 @@ async function carregarAtletas() {
       <span>${a.nome}${a.apelido ? ' ("' + a.apelido + '")' : ''}</span>
       <span style="color:#888;font-size:12px;">${a.posicao_principal || 'sem posição'}</span>
     </div>
-  `).join('') || '<p style="font-size:13px;color:#888;">Nenhum atleta cadastrado ainda.</p>';
+  `).join('') || '<div class="vazio"><i class="ti ti-shirt-sport"></i><p>Nenhum atleta cadastrado ainda.</p></div>';
 }
 
 function pegarPosicoesSecundariasAtleta() {

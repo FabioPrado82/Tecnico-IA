@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prancheta_ — Tempo Real</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233D3935'/%3E%3Ctext x='50' y='68' font-size='48' font-family='monospace' font-weight='bold' fill='%2352FF2B' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/tabler-icons/tabler-icons.min.css">
 <style>
   :root {
     --charcoal: #3D3935;
@@ -33,6 +34,10 @@
   button:active { transform: scale(0.98); }
   .btn-primary { background: var(--charcoal); color: #fff; border: none; font-weight: 600; width: 100%; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .btn-evento { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px; font-size: 12px; }
+  .btn-evento i { font-size: 22px; color: var(--charcoal-light); }
+  .btn-evento .icone-amarelo { color: #D9A400; }
+  .btn-evento .icone-vermelho { color: #C0392B; }
   .placar { display: flex; align-items: center; justify-content: space-between; }
   .placar .numero { font-size: 26px; font-weight: 700; }
   .cronometro { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -117,8 +122,8 @@
   </div>
 
   <div class="card">
-    <h2>Registrar por voz</h2>
-    <button id="btn-mic" class="btn-primary" style="width:100%;" onclick="iniciarReconhecimentoVoz()">🎤 Falar um evento</button>
+    <h2><i class="ti ti-microphone" style="color:var(--muted);margin-right:6px;"></i>Registrar por voz</h2>
+    <button id="btn-mic" class="btn-primary" style="width:100%;" onclick="iniciarReconhecimentoVoz()"><i class="ti ti-microphone" style="margin-right:6px;"></i>Falar um evento</button>
     <p class="status" id="status-mic" style="margin-top:8px;">Toque e diga algo como "gol do Rafael"</p>
 
     <div id="painel-confirmacao-voz" style="display:none;margin-top:12px;background:#f7f7f7;border-radius:8px;padding:12px;">
@@ -134,14 +139,14 @@
   </div>
 
   <div class="card">
-    <h2>Registrar evento</h2>
+    <h2><i class="ti ti-ball-football" style="color:var(--muted);margin-right:6px;"></i>Registrar evento</h2>
     <div class="grid3">
-      <button onclick="abrirEvento('gol')">Gol</button>
-      <button onclick="abrirEvento('cartao_amarelo')">Cartão amarelo</button>
-      <button onclick="abrirEvento('cartao_vermelho')">Cartão vermelho</button>
-      <button onclick="abrirEvento('falta')">Falta</button>
-      <button onclick="abrirEvento('escanteio')">Escanteio</button>
-      <button onclick="abrirEvento('substituicao')">Substituição</button>
+      <button class="btn-evento" onclick="abrirEvento('gol')"><i class="ti ti-ball-football"></i>Gol</button>
+      <button class="btn-evento" onclick="abrirEvento('cartao_amarelo')"><i class="ti ti-rectangle-vertical icone-amarelo"></i>Cartão amarelo</button>
+      <button class="btn-evento" onclick="abrirEvento('cartao_vermelho')"><i class="ti ti-rectangle-vertical icone-vermelho"></i>Cartão vermelho</button>
+      <button class="btn-evento" onclick="abrirEvento('falta')"><i class="ti ti-shoe"></i>Falta</button>
+      <button class="btn-evento" onclick="abrirEvento('escanteio')"><i class="ti ti-flag"></i>Escanteio</button>
+      <button class="btn-evento" onclick="abrirEvento('substituicao')"><i class="ti ti-arrows-right-left"></i>Substituição</button>
     </div>
     <div id="ultimo-evento" class="status" style="margin-top:10px;">Nenhum evento registrado ainda.</div>
   </div>
@@ -174,14 +179,14 @@
   </div>
 
   <div class="card">
-    <h2>Chat livre com o assistente</h2>
+    <h2><i class="ti ti-message-2" style="color:var(--muted);margin-right:6px;"></i>Chat livre com o assistente</h2>
     <textarea id="chat-mensagem" rows="2" placeholder="Pergunte algo ao técnico IA" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;"></textarea>
     <button class="btn-primary" style="margin-top:8px;" onclick="enviarChat()">Enviar</button>
     <div id="chat-historico" style="margin-top:12px;"></div>
   </div>
 
   <div class="card">
-    <h2>Pênaltis</h2>
+    <h2><i class="ti ti-target" style="color:var(--muted);margin-right:6px;"></i>Pênaltis</h2>
     <button style="width:100%;" onclick="gerarSugestaoPenaltis()">Gerar sugestão de ordem</button>
     <div id="lista-penaltis" style="margin-top:12px;"></div>
     <button id="btn-confirmar-ordem" class="btn-primary" style="margin-top:8px;display:none;" onclick="confirmarOrdemPenaltis()">Confirmar ordem</button>
